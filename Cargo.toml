@@ -1,0 +1,15 @@
+[package]
+name          = "egl"
+version       = "0.2.0"
+authors       = ["Sean Kerr <sean@code-box.org>"]
+license       = "Apache-2.0"
+description   = "Rust bindings for EGL"
+homepage      = "https://github.com/seankerr/rust-egl"
+repository    = "https://github.com/seankerr/rust-egl"
+readme        = "README.md"
+keywords      = ["egl", "gl", "khronos", "opengl"]
+exclude       = [".gitignore"]
+
+[dependencies]
+khronos = "0.1.0"
+libc    = "0.1.10"
