@@ -1,3 +1,5 @@
+# Rust bindings for EGL
+
 [![](http://meritbadge.herokuapp.com/egl)](https://crates.io/crates/egl)
 
 ### Linking
