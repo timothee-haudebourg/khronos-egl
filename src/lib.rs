@@ -102,176 +102,176 @@ pub struct EGLConfigList {
 // -------------------------------------------------------------------------------------------------
 
 // EGL aliases
-pub const FALSE: EGLBoolean = 0;
-pub const TRUE:  EGLBoolean = 1;
+pub const EGL_FALSE: EGLBoolean = 0;
+pub const EGL_TRUE:  EGLBoolean = 1;
 
 // out-of-band handle values
-pub const DEFAULT_DISPLAY: EGLNativeDisplayType = 0 as *mut c_void;
-pub const NO_CONTEXT:      EGLContext = 0 as *mut c_void;
-pub const NO_DISPLAY:      EGLDisplay = 0 as *mut c_void;
-pub const NO_SURFACE:      EGLSurface = 0 as *mut c_void;
+pub const EGL_DEFAULT_DISPLAY: EGLNativeDisplayType = 0 as *mut c_void;
+pub const EGL_NO_CONTEXT:      EGLContext = 0 as *mut c_void;
+pub const EGL_NO_DISPLAY:      EGLDisplay = 0 as *mut c_void;
+pub const EGL_NO_SURFACE:      EGLSurface = 0 as *mut c_void;
 
 // out-of-band attribute value
-pub const DONT_CARE: EGLint = -1;
+pub const EGL_DONT_CARE: EGLint = -1;
 
 // errors / GetError return values
-pub const SUCCESS:             EGLint = 0x3000;
-pub const NOT_INITIALIZED:     EGLint = 0x3001;
-pub const BAD_ACCESS:          EGLint = 0x3002;
-pub const BAD_ALLOC:           EGLint = 0x3003;
-pub const BAD_ATTRIBUTE:       EGLint = 0x3004;
-pub const BAD_CONFIG:          EGLint = 0x3005;
-pub const BAD_CONTEXT:         EGLint = 0x3006;
-pub const BAD_CURRENT_SURFACE: EGLint = 0x3007;
-pub const BAD_DISPLAY:         EGLint = 0x3008;
-pub const BAD_MATCH:           EGLint = 0x3009;
-pub const BAD_NATIVE_PIXMAP:   EGLint = 0x300A;
-pub const BAD_NATIVE_WINDOW:   EGLint = 0x300B;
-pub const BAD_PARAMETER:       EGLint = 0x300C;
-pub const BAD_SURFACE:         EGLint = 0x300D;
-pub const CONTEXT_LOST:        EGLint = 0x300E;  // EGL 1.1 - IMG_power_management
+pub const EGL_SUCCESS:             EGLint = 0x3000;
+pub const EGL_NOT_INITIALIZED:     EGLint = 0x3001;
+pub const EGL_BAD_ACCESS:          EGLint = 0x3002;
+pub const EGL_BAD_ALLOC:           EGLint = 0x3003;
+pub const EGL_BAD_ATTRIBUTE:       EGLint = 0x3004;
+pub const EGL_BAD_CONFIG:          EGLint = 0x3005;
+pub const EGL_BAD_CONTEXT:         EGLint = 0x3006;
+pub const EGL_BAD_CURRENT_SURFACE: EGLint = 0x3007;
+pub const EGL_BAD_DISPLAY:         EGLint = 0x3008;
+pub const EGL_BAD_MATCH:           EGLint = 0x3009;
+pub const EGL_BAD_NATIVE_PIXMAP:   EGLint = 0x300A;
+pub const EGL_BAD_NATIVE_WINDOW:   EGLint = 0x300B;
+pub const EGL_BAD_PARAMETER:       EGLint = 0x300C;
+pub const EGL_BAD_SURFACE:         EGLint = 0x300D;
+pub const EGL_CONTEXT_LOST:        EGLint = 0x300E;  // EGL 1.1 - IMG_power_management
 
 // config attributes
-pub const BUFFER_SIZE:             EGLint = 0x3020;
-pub const ALPHA_SIZE:              EGLint = 0x3021;
-pub const BLUE_SIZE:               EGLint = 0x3022;
-pub const GREEN_SIZE:              EGLint = 0x3023;
-pub const RED_SIZE:                EGLint = 0x3024;
-pub const DEPTH_SIZE:              EGLint = 0x3025;
-pub const STENCIL_SIZE:            EGLint = 0x3026;
-pub const CONFIG_CAVEAT:           EGLint = 0x3027;
-pub const CONFIG_ID:               EGLint = 0x3028;
-pub const LEVEL:                   EGLint = 0x3029;
-pub const MAX_PBUFFER_HEIGHT:      EGLint = 0x302A;
-pub const MAX_PBUFFER_PIXELS:      EGLint = 0x302B;
-pub const MAX_PBUFFER_WIDTH:       EGLint = 0x302C;
-pub const NATIVE_RENDERABLE:       EGLint = 0x302D;
-pub const NATIVE_VISUAL_ID:        EGLint = 0x302E;
-pub const NATIVE_VISUAL_TYPE:      EGLint = 0x302F;
-pub const SAMPLES:                 EGLint = 0x3031;
-pub const SAMPLE_BUFFERS:          EGLint = 0x3032;
-pub const SURFACE_TYPE:            EGLint = 0x3033;
-pub const TRANSPARENT_TYPE:        EGLint = 0x3034;
-pub const TRANSPARENT_BLUE_VALUE:  EGLint = 0x3035;
-pub const TRANSPARENT_GREEN_VALUE: EGLint = 0x3036;
-pub const TRANSPARENT_RED_VALUE:   EGLint = 0x3037;
-pub const NONE:                    EGLint = 0x3038; // attrib list terminator
-pub const BIND_TO_TEXTURE_RGB:     EGLint = 0x3039;
-pub const BIND_TO_TEXTURE_RGBA:    EGLint = 0x303A;
-pub const MIN_SWAP_INTERVAL:       EGLint = 0x303B;
-pub const MAX_SWAP_INTERVAL:       EGLint = 0x303C;
-pub const LUMINANCE_SIZE:          EGLint = 0x303D;
-pub const ALPHA_MASK_SIZE:         EGLint = 0x303E;
-pub const COLOR_BUFFER_TYPE:       EGLint = 0x303F;
-pub const RENDERABLE_TYPE:         EGLint = 0x3040;
-pub const MATCH_NATIVE_PIXMAP:     EGLint = 0x3041;  // psseudo-attribute (not queryable)
-pub const CONFORMANT:              EGLint = 0x3042;
+pub const EGL_BUFFER_SIZE:             EGLint = 0x3020;
+pub const EGL_ALPHA_SIZE:              EGLint = 0x3021;
+pub const EGL_BLUE_SIZE:               EGLint = 0x3022;
+pub const EGL_GREEN_SIZE:              EGLint = 0x3023;
+pub const EGL_RED_SIZE:                EGLint = 0x3024;
+pub const EGL_DEPTH_SIZE:              EGLint = 0x3025;
+pub const EGL_STENCIL_SIZE:            EGLint = 0x3026;
+pub const EGL_CONFIG_CAVEAT:           EGLint = 0x3027;
+pub const EGL_CONFIG_ID:               EGLint = 0x3028;
+pub const EGL_LEVEL:                   EGLint = 0x3029;
+pub const EGL_MAX_PBUFFER_HEIGHT:      EGLint = 0x302A;
+pub const EGL_MAX_PBUFFER_PIXELS:      EGLint = 0x302B;
+pub const EGL_MAX_PBUFFER_WIDTH:       EGLint = 0x302C;
+pub const EGL_NATIVE_RENDERABLE:       EGLint = 0x302D;
+pub const EGL_NATIVE_VISUAL_ID:        EGLint = 0x302E;
+pub const EGL_NATIVE_VISUAL_TYPE:      EGLint = 0x302F;
+pub const EGL_SAMPLES:                 EGLint = 0x3031;
+pub const EGL_SAMPLE_BUFFERS:          EGLint = 0x3032;
+pub const EGL_SURFACE_TYPE:            EGLint = 0x3033;
+pub const EGL_TRANSPARENT_TYPE:        EGLint = 0x3034;
+pub const EGL_TRANSPARENT_BLUE_VALUE:  EGLint = 0x3035;
+pub const EGL_TRANSPARENT_GREEN_VALUE: EGLint = 0x3036;
+pub const EGL_TRANSPARENT_RED_VALUE:   EGLint = 0x3037;
+pub const EGL_NONE:                    EGLint = 0x3038; // attrib list terminator
+pub const EGL_BIND_TO_TEXTURE_RGB:     EGLint = 0x3039;
+pub const EGL_BIND_TO_TEXTURE_RGBA:    EGLint = 0x303A;
+pub const EGL_MIN_SWAP_INTERVAL:       EGLint = 0x303B;
+pub const EGL_MAX_SWAP_INTERVAL:       EGLint = 0x303C;
+pub const EGL_LUMINANCE_SIZE:          EGLint = 0x303D;
+pub const EGL_ALPHA_MASK_SIZE:         EGLint = 0x303E;
+pub const EGL_COLOR_BUFFER_TYPE:       EGLint = 0x303F;
+pub const EGL_RENDERABLE_TYPE:         EGLint = 0x3040;
+pub const EGL_MATCH_NATIVE_PIXMAP:     EGLint = 0x3041;  // psseudo-attribute (not queryable)
+pub const EGL_CONFORMANT:              EGLint = 0x3042;
 
 // config attribute values
-pub const SLOW_CONFIG:           EGLint = 0x3050;  // CONFIG_CAVEAT value
-pub const NON_CONFORMANT_CONFIG: EGLint = 0x3051;  // CONFIG_CAVEAT value
-pub const TRANSPARENT_RGB:       EGLint = 0x3052;  // TRANSPARENT_TYPE value
-pub const RGB_BUFFER:            EGLint = 0x308E;  // COLOR_BUFFER_TYPE value
-pub const LUMINANCE_BUFFER:      EGLint = 0x308F;  // COLOR_BUFFER_TYPE value
+pub const EGL_SLOW_CONFIG:           EGLint = 0x3050;  // CONFIG_CAVEAT value
+pub const EGL_NON_CONFORMANT_CONFIG: EGLint = 0x3051;  // CONFIG_CAVEAT value
+pub const EGL_TRANSPARENT_RGB:       EGLint = 0x3052;  // TRANSPARENT_TYPE value
+pub const EGL_RGB_BUFFER:            EGLint = 0x308E;  // COLOR_BUFFER_TYPE value
+pub const EGL_LUMINANCE_BUFFER:      EGLint = 0x308F;  // COLOR_BUFFER_TYPE value
 
 // more config attribute values, for TEXTURE_FORMAT
-pub const NO_TEXTURE:   EGLint = 0x305C;
-pub const TEXTURE_RGB:  EGLint = 0x305D;
-pub const TEXTURE_RGBA: EGLint = 0x305E;
-pub const TEXTURE_2D:   EGLint = 0x305F;
+pub const EGL_NO_TEXTURE:   EGLint = 0x305C;
+pub const EGL_TEXTURE_RGB:  EGLint = 0x305D;
+pub const EGL_TEXTURE_RGBA: EGLint = 0x305E;
+pub const EGL_TEXTURE_2D:   EGLint = 0x305F;
 
 // config attribute mask bits
-pub const PBUFFER_BIT:                 EGLint = 0x0001;  // SURFACE_TYPE mask bits
-pub const PIXMAP_BIT:                  EGLint = 0x0002;  // SURFACE_TYPE mask bits
-pub const WINDOW_BIT:                  EGLint = 0x0004;  // SURFACE_TYPE mask bits
-pub const VG_COLORSPACE_LINEAR_BIT:    EGLint = 0x0020;  // SURFACE_TYPE mask bits
-pub const VG_ALPHA_FORMAT_PRE_BIT:     EGLint = 0x0040;  // SURFACE_TYPE mask bits
-pub const MULTISAMPLE_RESOLVE_BOX_BIT: EGLint = 0x0200;  // SURFACE_TYPE mask bits
-pub const SWAP_BEHAVIOR_PRESERVED_BIT: EGLint = 0x0400;  // SURFACE_TYPE mask bits
+pub const EGL_PBUFFER_BIT:                 EGLint = 0x0001;  // SURFACE_TYPE mask bits
+pub const EGL_PIXMAP_BIT:                  EGLint = 0x0002;  // SURFACE_TYPE mask bits
+pub const EGL_WINDOW_BIT:                  EGLint = 0x0004;  // SURFACE_TYPE mask bits
+pub const EGL_VG_COLORSPACE_LINEAR_BIT:    EGLint = 0x0020;  // SURFACE_TYPE mask bits
+pub const EGL_VG_ALPHA_FORMAT_PRE_BIT:     EGLint = 0x0040;  // SURFACE_TYPE mask bits
+pub const EGL_MULTISAMPLE_RESOLVE_BOX_BIT: EGLint = 0x0200;  // SURFACE_TYPE mask bits
+pub const EGL_SWAP_BEHAVIOR_PRESERVED_BIT: EGLint = 0x0400;  // SURFACE_TYPE mask bits
 
-pub const OPENGL_ES_BIT:  EGLint = 0x0001; // RENDERABLE_TYPE mask bits
-pub const OPENVG_BIT:     EGLint = 0x0002; // RENDERABLE_TYPE mask bits
-pub const OPENGL_ES2_BIT: EGLint = 0x0004; // RENDERABLE_TYPE mask bits
-pub const OPENGL_BIT:     EGLint = 0x0008; // RENDERABLE_TYPE mask bits
+pub const EGL_OPENGL_ES_BIT:  EGLint = 0x0001; // RENDERABLE_TYPE mask bits
+pub const EGL_OPENVG_BIT:     EGLint = 0x0002; // RENDERABLE_TYPE mask bits
+pub const EGL_OPENGL_ES2_BIT: EGLint = 0x0004; // RENDERABLE_TYPE mask bits
+pub const EGL_OPENGL_BIT:     EGLint = 0x0008; // RENDERABLE_TYPE mask bits
 
 // QueryString targets
-pub const VENDOR:      EGLint = 0x3053;
-pub const VERSION:     EGLint = 0x3054;
-pub const EXTENSIONS:  EGLint = 0x3055;
-pub const CLIENT_APIS: EGLint = 0x308D;
+pub const EGL_VENDOR:      EGLint = 0x3053;
+pub const EGL_VERSION:     EGLint = 0x3054;
+pub const EGL_EXTENSIONS:  EGLint = 0x3055;
+pub const EGL_CLIENT_APIS: EGLint = 0x308D;
 
 // QuerySurface / SurfaceAttrib / CreatePbufferSurface targets
-pub const HEIGHT:                EGLint = 0x3056;
-pub const WIDTH:                 EGLint = 0x3057;
-pub const LARGEST_PBUFFER:       EGLint = 0x3058;
-pub const TEXTURE_FORMAT:        EGLint = 0x3080;
-pub const TEXTURE_TARGET:        EGLint = 0x3081;
-pub const MIPMAP_TEXTURE:        EGLint = 0x3082;
-pub const MIPMAP_LEVEL:          EGLint = 0x3083;
-pub const RENDER_BUFFER:         EGLint = 0x3086;
-pub const VG_COLORSPACE:         EGLint = 0x3087;
-pub const VG_ALPHA_FORMAT:       EGLint = 0x3088;
-pub const HORIZONTAL_RESOLUTION: EGLint = 0x3090;
-pub const VERTICAL_RESOLUTION:   EGLint = 0x3091;
-pub const PIXEL_ASPECT_RATIO:    EGLint = 0x3092;
-pub const SWAP_BEHAVIOR:         EGLint = 0x3093;
-pub const MULTISAMPLE_RESOLVE:   EGLint = 0x3099;
+pub const EGL_HEIGHT:                EGLint = 0x3056;
+pub const EGL_WIDTH:                 EGLint = 0x3057;
+pub const EGL_LARGEST_PBUFFER:       EGLint = 0x3058;
+pub const EGL_TEXTURE_FORMAT:        EGLint = 0x3080;
+pub const EGL_TEXTURE_TARGET:        EGLint = 0x3081;
+pub const EGL_MIPMAP_TEXTURE:        EGLint = 0x3082;
+pub const EGL_MIPMAP_LEVEL:          EGLint = 0x3083;
+pub const EGL_RENDER_BUFFER:         EGLint = 0x3086;
+pub const EGL_VG_COLORSPACE:         EGLint = 0x3087;
+pub const EGL_VG_ALPHA_FORMAT:       EGLint = 0x3088;
+pub const EGL_HORIZONTAL_RESOLUTION: EGLint = 0x3090;
+pub const EGL_VERTICAL_RESOLUTION:   EGLint = 0x3091;
+pub const EGL_PIXEL_ASPECT_RATIO:    EGLint = 0x3092;
+pub const EGL_SWAP_BEHAVIOR:         EGLint = 0x3093;
+pub const EGL_MULTISAMPLE_RESOLVE:   EGLint = 0x3099;
 
 // RENDER_BUFFER values / BindTexImage / ReleaseTexImage buffer targets
-pub const BACK_BUFFER:   EGLint = 0x3084;
-pub const SINGLE_BUFFER: EGLint = 0x3085;
+pub const EGL_BACK_BUFFER:   EGLint = 0x3084;
+pub const EGL_SINGLE_BUFFER: EGLint = 0x3085;
 
 // OpenVG color spaces */
-pub const VG_COLORSPACE_sRGB:   EGLint = 0x3089;  // VG_COLORSPACE value
-pub const VG_COLORSPACE_LINEAR: EGLint = 0x308A;  // VG_COLORSPACE value
+pub const EGL_VG_COLORSPACE_sRGB:   EGLint = 0x3089;  // VG_COLORSPACE value
+pub const EGL_VG_COLORSPACE_LINEAR: EGLint = 0x308A;  // VG_COLORSPACE value
 
 // OpenVG alpha formats
-pub const VG_ALPHA_FORMAT_NONPRE: EGLint = 0x308B; // ALPHA_FORMAT value
-pub const VG_ALPHA_FORMAT_PRE:    EGLint = 0x308C; // ALPHA_FORMAT value
+pub const EGL_VG_ALPHA_FORMAT_NONPRE: EGLint = 0x308B; // ALPHA_FORMAT value
+pub const EGL_VG_ALPHA_FORMAT_PRE:    EGLint = 0x308C; // ALPHA_FORMAT value
 
 // constant scale factor by which fractional display resolutions & aspect ratio are scaled when
 // queried as integer values
-pub const DISPLAY_SCALING: EGLint = 10000;
+pub const EGL_DISPLAY_SCALING: EGLint = 10000;
 
 // unknown display resolution/aspect ratio
-pub const UNKNOWN: EGLint = -1;
+pub const EGL_UNKNOWN: EGLint = -1;
 
 // back buffer swap behaviors
-pub const BUFFER_PRESERVED: EGLint = 0x3094; // SWAP_BEHAVIOR value
-pub const BUFFER_DESTROYED: EGLint = 0x3095; // SWAP_BEHAVIOR value
+pub const EGL_BUFFER_PRESERVED: EGLint = 0x3094; // SWAP_BEHAVIOR value
+pub const EGL_BUFFER_DESTROYED: EGLint = 0x3095; // SWAP_BEHAVIOR value
 
 // CreatePbufferFromClientBuffer buffer types
-pub const OPENVG_IMAGE: EGLint = 0x3096;
+pub const EGL_OPENVG_IMAGE: EGLint = 0x3096;
 
 // QueryContext targets
-pub const CONTEXT_CLIENT_TYPE: EGLint = 0x3097;
+pub const EGL_CONTEXT_CLIENT_TYPE: EGLint = 0x3097;
 
 // CreateContext attributes
-pub const CONTEXT_CLIENT_VERSION: EGLint = 0x3098;
+pub const EGL_CONTEXT_CLIENT_VERSION: EGLint = 0x3098;
 
 // multisample resolution behaviors
-pub const MULTISAMPLE_RESOLVE_DEFAULT: EGLint = 0x309A; // MULTISAMPLE_RESOLVE value
-pub const MULTISAMPLE_RESOLVE_BOX:     EGLint = 0x309B; // MULTISAMPLE_RESOLVE value
+pub const EGL_MULTISAMPLE_RESOLVE_DEFAULT: EGLint = 0x309A; // MULTISAMPLE_RESOLVE value
+pub const EGL_MULTISAMPLE_RESOLVE_BOX:     EGLint = 0x309B; // MULTISAMPLE_RESOLVE value
 
 // BindAPI/QueryAPI targets
-pub const OPENGL_ES_API: EGLint = 0x30A0;
-pub const OPENVG_API:    EGLint = 0x30A1;
-pub const OPENGL_API:    EGLint = 0x30A2;
+pub const EGL_OPENGL_ES_API: EGLint = 0x30A0;
+pub const EGL_OPENVG_API:    EGLint = 0x30A1;
+pub const EGL_OPENGL_API:    EGLint = 0x30A2;
 
 // GetCurrentSurface targets
-pub const DRAW: EGLint = 0x3059;
-pub const READ: EGLint = 0x305A;
+pub const EGL_DRAW: EGLint = 0x3059;
+pub const EGL_READ: EGLint = 0x305A;
 
 // WaitNative engines
-pub const CORE_NATIVE_ENGINE: EGLint = 0x305B;
+pub const EGL_CORE_NATIVE_ENGINE: EGLint = 0x305B;
 
 // EGL 1.2 tokens renamed for consistency in EGL 1.3
-pub const COLORSPACE:          EGLint = VG_COLORSPACE;
-pub const ALPHA_FORMAT:        EGLint = VG_ALPHA_FORMAT;
-pub const COLORSPACE_sRGB:     EGLint = VG_COLORSPACE_sRGB;
-pub const COLORSPACE_LINEAR:   EGLint = VG_COLORSPACE_LINEAR;
-pub const ALPHA_FORMAT_NONPRE: EGLint = VG_ALPHA_FORMAT_NONPRE;
-pub const ALPHA_FORMAT_PRE:    EGLint = VG_ALPHA_FORMAT_PRE;
+pub const EGL_COLORSPACE:          EGLint = EGL_VG_COLORSPACE;
+pub const EGL_ALPHA_FORMAT:        EGLint = EGL_VG_ALPHA_FORMAT;
+pub const EGL_COLORSPACE_sRGB:     EGLint = EGL_VG_COLORSPACE_sRGB;
+pub const EGL_COLORSPACE_LINEAR:   EGLint = EGL_VG_COLORSPACE_LINEAR;
+pub const EGL_ALPHA_FORMAT_NONPRE: EGLint = EGL_VG_ALPHA_FORMAT_NONPRE;
+pub const EGL_ALPHA_FORMAT_PRE:    EGLint = EGL_VG_ALPHA_FORMAT_PRE;
 
 // -------------------------------------------------------------------------------------------------
 // FUNCTIONS
@@ -279,13 +279,13 @@ pub const ALPHA_FORMAT_PRE:    EGLint = VG_ALPHA_FORMAT_PRE;
 
 pub fn bind_api(api: EGLenum) -> bool {
     unsafe {
-        ffi::eglBindAPI(api) == TRUE
+        ffi::eglBindAPI(api) == EGL_TRUE
     }
 }
 
 pub fn bind_tex_image(display: EGLDisplay, surface: EGLSurface, buffer: EGLint) -> bool {
     unsafe {
-        ffi::eglBindTexImage(display, surface, buffer) == TRUE
+        ffi::eglBindTexImage(display, surface, buffer) == EGL_TRUE
     }
 }
 
@@ -296,7 +296,7 @@ pub fn choose_config(display: EGLDisplay, attrib_list: &[EGLint],
         let mut count:  EGLint = 0;
 
         if ffi::eglChooseConfig(display, attrib_list.as_ptr(), config, config_size,
-                                &mut count) == TRUE {
+                                &mut count) == EGL_TRUE {
             Some(config)
         } else {
             None
@@ -307,7 +307,7 @@ pub fn choose_config(display: EGLDisplay, attrib_list: &[EGLint],
 pub fn copy_buffers(display: EGLDisplay, surface: EGLSurface,
                     target: EGLNativePixmapType) -> bool {
     unsafe {
-        ffi::eglCopyBuffers(display, surface, target) == TRUE
+        ffi::eglCopyBuffers(display, surface, target) == EGL_TRUE
     }
 }
 
@@ -382,20 +382,20 @@ pub fn create_window_surface(display: EGLDisplay, config: EGLConfig,
 
 pub fn destroy_context(display: EGLDisplay, ctx: EGLContext) -> bool {
     unsafe {
-        ffi::eglDestroyContext(display, ctx) == TRUE
+        ffi::eglDestroyContext(display, ctx) == EGL_TRUE
     }
 }
 
 pub fn destroy_surface(display: EGLDisplay, surface: EGLSurface) -> bool {
     unsafe {
-        ffi::eglDestroySurface(display, surface) == TRUE
+        ffi::eglDestroySurface(display, surface) == EGL_TRUE
     }
 }
 
 pub fn get_config_attrib(display: EGLDisplay, config: EGLConfig,
                          attribute: EGLint, value: &mut EGLint) -> bool {
     unsafe {
-        ffi::eglGetConfigAttrib(display, config, attribute, value) == TRUE
+        ffi::eglGetConfigAttrib(display, config, attribute, value) == EGL_TRUE
     }
 }
 
@@ -474,14 +474,14 @@ pub fn get_proc_address(procname: &str) -> extern "C" fn() {
 
 pub fn initialize(display: EGLDisplay, major: &mut EGLint, minor: &mut EGLint) -> bool {
     unsafe {
-        ffi::eglInitialize(display, major, minor) == TRUE
+        ffi::eglInitialize(display, major, minor) == EGL_TRUE
     }
 }
 
 pub fn make_current(display: EGLDisplay, draw: EGLSurface,
                     read: EGLSurface, ctx: EGLContext) -> bool {
     unsafe {
-        ffi::eglMakeCurrent(display, draw, read, ctx) == TRUE
+        ffi::eglMakeCurrent(display, draw, read, ctx) == EGL_TRUE
     }
 }
 
@@ -494,7 +494,7 @@ pub fn query_api() -> EGLenum {
 pub fn query_context(display: EGLDisplay, ctx: EGLContext,
                      attribute: EGLint, value: &mut EGLint) -> bool {
     unsafe {
-        ffi::eglQueryContext(display, ctx, attribute, value) == TRUE
+        ffi::eglQueryContext(display, ctx, attribute, value) == EGL_TRUE
     }
 }
 
@@ -513,62 +513,62 @@ pub fn query_string(display: EGLDisplay, name: EGLint) -> Option<&'static CStr> 
 pub fn query_surface(display: EGLDisplay, surface: EGLSurface,
                      attribute: EGLint, value: *mut EGLint) -> bool {
     unsafe {
-        ffi::eglQuerySurface(display, surface, attribute, value) == TRUE
+        ffi::eglQuerySurface(display, surface, attribute, value) == EGL_TRUE
     }
 }
 
 pub fn release_tex_image(display: EGLDisplay, surface: EGLSurface, buffer: EGLint) -> bool {
     unsafe {
-        ffi::eglReleaseTexImage(display, surface, buffer) == TRUE
+        ffi::eglReleaseTexImage(display, surface, buffer) == EGL_TRUE
     }
 }
 
 pub fn release_thread() -> bool {
     unsafe {
-        ffi::eglReleaseThread() == TRUE
+        ffi::eglReleaseThread() == EGL_TRUE
     }
 }
 
 pub fn surface_attrib(display: EGLDisplay, surface: EGLSurface,
                       attribute: EGLint, value: EGLint) -> bool {
     unsafe {
-        ffi::eglSurfaceAttrib(display, surface, attribute, value) == TRUE
+        ffi::eglSurfaceAttrib(display, surface, attribute, value) == EGL_TRUE
     }
 }
 
 pub fn swap_buffers(display: EGLDisplay, surface: EGLSurface) -> bool {
     unsafe {
-        ffi::eglSwapBuffers(display, surface) == TRUE
+        ffi::eglSwapBuffers(display, surface) == EGL_TRUE
     }
 }
 
 pub fn swap_interface(display: EGLDisplay, interval: EGLint) -> bool {
     unsafe {
-        ffi::eglSwapInterface(display, interval) == TRUE
+        ffi::eglSwapInterface(display, interval) == EGL_TRUE
     }
 }
 
 pub fn terminate(display: EGLDisplay) -> bool {
     unsafe {
-        ffi::eglTerminate(display) == TRUE
+        ffi::eglTerminate(display) == EGL_TRUE
     }
 }
 
 pub fn wait_client() -> bool {
     unsafe {
-        ffi::eglWaitClient() == TRUE
+        ffi::eglWaitClient() == EGL_TRUE
     }
 }
 
 pub fn wait_gl() -> bool {
     unsafe {
-        ffi::eglWaitGL() == TRUE
+        ffi::eglWaitGL() == EGL_TRUE
     }
 }
 
 pub fn wait_native(engine: EGLint) -> bool {
     unsafe {
-        ffi::eglWaitNative(engine) == TRUE
+        ffi::eglWaitNative(engine) == EGL_TRUE
     }
 }
 
