@@ -35,9 +35,9 @@ use std::ptr;
 // system
 use khronos::khronos_int32_t;
 
-use libc::{ c_void,
-            int32_t,
-            uint32_t };
+use libc::{ c_uint,
+            c_void,
+            int32_t };
 
 // -------------------------------------------------------------------------------------------------
 // LINKING
@@ -50,12 +50,12 @@ extern {}
 // GLOBAL TYPES
 // -------------------------------------------------------------------------------------------------
 
-pub type EGLBoolean           = uint32_t;
+pub type EGLBoolean           = c_uint;
 pub type EGLClientBuffer      = *mut c_void;
 pub type EGLConfig            = *mut c_void;
 pub type EGLContext           = *mut c_void;
 pub type EGLDisplay           = *mut c_void;
-pub type EGLenum              = uint32_t;
+pub type EGLenum              = c_uint;
 pub type EGLint               = khronos_int32_t;
 pub type EGLNativeDisplayType = *mut c_void;
 pub type EGLSurface           = *mut c_void;
