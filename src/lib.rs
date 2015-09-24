@@ -511,7 +511,7 @@ pub fn query_string(display: EGLDisplay, name: EGLint) -> Option<&'static CStr> 
 }
 
 pub fn query_surface(display: EGLDisplay, surface: EGLSurface,
-                     attribute: EGLint, value: *mut EGLint) -> bool {
+                     attribute: EGLint, value: &mut EGLint) -> bool {
     unsafe {
         ffi::eglQuerySurface(display, surface, attribute, value) == EGL_TRUE
     }
