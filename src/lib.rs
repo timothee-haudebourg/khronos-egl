@@ -66,11 +66,11 @@ pub type EGLSurface           = *mut c_void;
 
 #[repr(C)]
 #[cfg(android)]
-enum android_native_window_t {}
+struct android_native_window_t;
 
 #[repr(C)]
 #[cfg(android)]
-enum egl_native_pixmap_t {}
+struct egl_native_pixmap_t;
 
 #[cfg(android)]
 pub type EGLNativePixmapType = *mut egl_native_pixmap_t;
