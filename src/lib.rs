@@ -254,9 +254,9 @@ pub const EGL_MULTISAMPLE_RESOLVE_DEFAULT: EGLint = 0x309A; // MULTISAMPLE_RESOL
 pub const EGL_MULTISAMPLE_RESOLVE_BOX:     EGLint = 0x309B; // MULTISAMPLE_RESOLVE value
 
 // BindAPI/QueryAPI targets
-pub const EGL_OPENGL_ES_API: EGLint = 0x30A0;
-pub const EGL_OPENVG_API:    EGLint = 0x30A1;
-pub const EGL_OPENGL_API:    EGLint = 0x30A2;
+pub const EGL_OPENGL_ES_API: EGLenum = 0x30A0;
+pub const EGL_OPENVG_API:    EGLenum = 0x30A1;
+pub const EGL_OPENGL_API:    EGLenum = 0x30A2;
 
 // GetCurrentSurface targets
 pub const EGL_DRAW: EGLint = 0x3059;
