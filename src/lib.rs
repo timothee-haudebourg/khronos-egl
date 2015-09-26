@@ -295,7 +295,13 @@ pub fn choose_config(display: EGLDisplay, attrib_list: &[EGLint],
         let mut config: EGLConfig = ptr::null_mut();
         let mut count:  EGLint = 0;
 
-        if ffi::eglChooseConfig(display, attrib_list.as_ptr(), &mut config, config_size,
+        let attribs = if attrib_list.len() > 0 {
+            attrib_list.as_ptr()
+        } else {
+            ptr::null()
+        };
+
+        if ffi::eglChooseConfig(display, attribs, &mut config, config_size,
                                 &mut count) == EGL_TRUE {
             if count > 0 {
                 Some(config)
@@ -318,7 +324,13 @@ pub fn copy_buffers(display: EGLDisplay, surface: EGLSurface,
 pub fn create_context(display: EGLDisplay, config: EGLConfig, share_context: EGLContext,
                       attrib_list: &[EGLint]) -> Option<EGLContext> {
     unsafe {
-        let context = ffi::eglCreateContext(display, config, share_context, attrib_list.as_ptr());
+        let attribs = if attrib_list.len() > 0 {
+            attrib_list.as_ptr()
+        } else {
+            ptr::null()
+        };
+
+        let context = ffi::eglCreateContext(display, config, share_context, attribs);
 
         if !context.is_null() {
             Some(context)
@@ -332,8 +344,14 @@ pub fn create_pbuffer_from_client_buffer(display: EGLDisplay, buffer_type: EGLen
                                          buffer: EGLClientBuffer, config: EGLConfig,
                                          attrib_list: &[EGLint]) -> Option<EGLSurface> {
     unsafe {
+        let attribs = if attrib_list.len() > 0 {
+            attrib_list.as_ptr()
+        } else {
+            ptr::null()
+        };
+
         let surface = ffi::eglCreatePbufferFromClientBuffer(display, buffer_type, buffer, config,
-                                                            attrib_list.as_ptr());
+                                                            attribs);
 
         if !surface.is_null() {
             Some(surface)
@@ -346,7 +364,13 @@ pub fn create_pbuffer_from_client_buffer(display: EGLDisplay, buffer_type: EGLen
 pub fn create_pbuffer_surface(display: EGLDisplay, config: EGLConfig,
                               attrib_list: &[EGLint]) -> Option<EGLSurface> {
     unsafe {
-        let surface = ffi::eglCreatePbufferSurface(display, config, attrib_list.as_ptr());
+        let attribs = if attrib_list.len() > 0 {
+            attrib_list.as_ptr()
+        } else {
+            ptr::null()
+        };
+
+        let surface = ffi::eglCreatePbufferSurface(display, config, attribs);
 
         if !surface.is_null() {
             Some(surface)
@@ -360,7 +384,13 @@ pub fn create_pixmap_surface(display: EGLDisplay, config: EGLConfig,
                              pixmap: EGLNativePixmapType,
                              attrib_list: &[EGLint]) -> Option<EGLSurface> {
     unsafe {
-        let surface = ffi::eglCreatePixmapSurface(display, config, pixmap, attrib_list.as_ptr());
+        let attribs = if attrib_list.len() > 0 {
+            attrib_list.as_ptr()
+        } else {
+            ptr::null()
+        };
+
+        let surface = ffi::eglCreatePixmapSurface(display, config, pixmap, attribs);
 
         if !surface.is_null() {
             Some(surface)
@@ -371,10 +401,16 @@ pub fn create_pixmap_surface(display: EGLDisplay, config: EGLConfig,
 }
 
 pub fn create_window_surface(display: EGLDisplay, config: EGLConfig,
-                             win: EGLNativeWindowType,
+                             window: EGLNativeWindowType,
                              attrib_list: &[EGLint]) -> Option<EGLSurface> {
     unsafe {
-        let surface = ffi::eglCreateWindowSurface(display, config, win, attrib_list.as_ptr());
+        let attribs = if attrib_list.len() > 0 {
+            attrib_list.as_ptr()
+        } else {
+            ptr::null()
+        };
+
+        let surface = ffi::eglCreateWindowSurface(display, config, window, attribs);
 
         if !surface.is_null() {
             Some(surface)
