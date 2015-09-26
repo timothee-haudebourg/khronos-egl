@@ -292,12 +292,16 @@ pub fn bind_tex_image(display: EGLDisplay, surface: EGLSurface, buffer: EGLint) 
 pub fn choose_config(display: EGLDisplay, attrib_list: &[EGLint],
                      config_size: EGLint) -> Option<EGLConfig> {
     unsafe {
-        let     config: EGLConfig = ptr::null_mut();
+        let mut config: EGLConfig = ptr::null_mut();
         let mut count:  EGLint = 0;
 
-        if ffi::eglChooseConfig(display, attrib_list.as_ptr(), config, config_size,
+        if ffi::eglChooseConfig(display, attrib_list.as_ptr(), &mut config, config_size,
                                 &mut count) == EGL_TRUE {
-            Some(config)
+            if count > 0 {
+                Some(config)
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -597,7 +601,7 @@ mod ffi {
         pub fn eglBindTexImage(dpy: EGLDisplay, surface: EGLSurface, buffer: EGLint) -> EGLBoolean;
 
         pub fn eglChooseConfig(dpy: EGLDisplay, attrib_list: *const EGLint,
-                               configs: EGLConfig, config_size: EGLint,
+                               configs: *mut EGLConfig, config_size: EGLint,
                                num_config: *mut EGLint) -> EGLBoolean;
 
         pub fn eglCopyBuffers(dpy: EGLDisplay, surface: EGLSurface,
