@@ -582,9 +582,9 @@ pub fn swap_buffers(display: EGLDisplay, surface: EGLSurface) -> bool {
     }
 }
 
-pub fn swap_interface(display: EGLDisplay, interval: EGLint) -> bool {
+pub fn swap_interval(display: EGLDisplay, interval: EGLint) -> bool {
     unsafe {
-        ffi::eglSwapInterface(display, interval) == EGL_TRUE
+        ffi::eglSwapInterval(display, interval) == EGL_TRUE
     }
 }
 
@@ -709,7 +709,7 @@ mod ffi {
 
         pub fn eglSwapBuffers(dpy: EGLDisplay, surface: EGLSurface) -> EGLBoolean;
 
-        pub fn eglSwapInterface(dpy: EGLDisplay, interval: EGLint) -> EGLBoolean;
+        pub fn eglSwapInterval(dpy: EGLDisplay, interval: EGLint) -> EGLBoolean;
 
         pub fn eglTerminate(dpy: EGLDisplay) -> EGLBoolean;
 
