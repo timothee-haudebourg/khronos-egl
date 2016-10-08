@@ -1,6 +1,6 @@
 [package]
 name          = "egl"
-version       = "0.2.5"
+version       = "0.2.6"
 authors       = ["Sean Kerr <sean@code-box.org>"]
 license       = "Apache-2.0"
 description   = "Rust bindings for EGL"
