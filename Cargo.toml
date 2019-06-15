@@ -9,7 +9,11 @@ repository    = "https://github.com/seankerr/rust-egl"
 readme        = "README.md"
 keywords      = ["egl", "gl", "khronos", "opengl"]
 exclude       = [".gitignore"]
+build         = "build.rs"
 
 [dependencies]
 khronos = "0.1.1"
 libc    = "0.2.16"
+
+[build-dependencies]
+pkg-config = "0.3.8"
