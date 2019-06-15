@@ -274,14 +274,22 @@ pub fn get_config_attrib(display: EGLDisplay, config: EGLConfig,
     }
 }
 
-pub fn get_configs(display: EGLDisplay, config_size: EGLint) -> EGLConfigList {
-    unsafe {
-        let list = EGLConfigList{ configs: ptr::null_mut(),
-                                  count:   0 };
+pub fn get_configs(display: EGLDisplay, config_size: EGLint) -> Vec<EGLConfig> {
+    if config_size > 0 {
+        let capacity = config_size as usize;
 
-        ffi::eglGetConfigs(display, list.configs, config_size, list.count as *mut int32_t);
+        unsafe {
+            let mut vec: Vec<EGLConfig> = Vec::with_capacity(capacity);
+            let config_list = vec.as_mut_ptr();
+            let mut num_config: int32_t = 0;
+            std::mem::forget(vec);
 
-        list
+            ffi::eglGetConfigs(display, config_list, config_size, &mut num_config as *mut int32_t);
+
+            Vec::from_raw_parts(config_list, num_config as usize, capacity)
+        }
+    } else {
+        Vec::new()
     }
 }
 
