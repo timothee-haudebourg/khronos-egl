@@ -80,11 +80,6 @@ pub type EGLNativePixmapType = *mut egl_native_pixmap_t;
 #[cfg(android)]
 pub type EGLNativeWindowType = *mut android_native_window_t;
 
-pub struct EGLConfigList {
-    pub configs: *mut EGLConfig,
-    pub count:   int32_t
-}
-
 pub const EGL_ALPHA_SIZE: EGLint = 0x3021;
 pub const EGL_BAD_ACCESS: EGLint = 0x3002;
 pub const EGL_BAD_ALLOC: EGLint = 0x3003;
