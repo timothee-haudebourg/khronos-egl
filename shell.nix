@@ -5,5 +5,4 @@ runCommand "dummy" {
 		libGL
 		pkg-config
 	];
-	ELECTRON_TRASH = "gio";
 } ""
