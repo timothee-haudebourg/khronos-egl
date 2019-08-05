@@ -1,24 +1,3 @@
-// +-----------------------------------------------------------------------------------------------+
-// | Copyright 2015 Sean Kerr                                                                      |
-// |                                                                                               |
-// | Licensed under the Apache License, Version 2.0 (the "License");                               |
-// | you may not use this file except in compliance with the License.                              |
-// | You may obtain a copy of the License Author                                                   |
-// |                                                                                               |
-// |  http://www.apache.org/licenses/LICENSE-2.0                                                   |
-// |                                                                                               |
-// | Unless required by applicable law or agreed to in writing, software                           |
-// | distributed under the License is distributed on an "AS IS" BASIS,                             |
-// | WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                      |
-// | See the License for the specific language governing permissions and                           |
-// | limitations under the License.                                                                |
-// +-----------------------------------------------------------------------------------------------+
-// | Authors: Sean Kerr <sean@metatomic.io>                                                        |
-// |          Timothée Haudebourg <author@haudebourg.net>                                          |
-// +-----------------------------------------------------------------------------------------------+
-
-#![crate_name = "egl"]
-#![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 
 // -------------------------------------------------------------------------------------------------
@@ -38,8 +17,7 @@ use khronos::{ khronos_int32_t,
                khronos_utime_nanoseconds_t };
 
 use libc::{ c_uint,
-            c_void,
-            int32_t };
+            c_void };
 
 // -------------------------------------------------------------------------------------------------
 // LINKING
@@ -276,10 +254,10 @@ pub fn get_configs(display: EGLDisplay, config_size: EGLint) -> Vec<EGLConfig> {
         unsafe {
             let mut vec: Vec<EGLConfig> = Vec::with_capacity(capacity);
             let config_list = vec.as_mut_ptr();
-            let mut num_config: int32_t = 0;
+            let mut num_config: i32 = 0;
             std::mem::forget(vec);
 
-            ffi::eglGetConfigs(display, config_list, config_size, &mut num_config as *mut int32_t);
+            ffi::eglGetConfigs(display, config_list, config_size, &mut num_config as *mut i32);
 
             Vec::from_raw_parts(config_list, num_config as usize, capacity)
         }
