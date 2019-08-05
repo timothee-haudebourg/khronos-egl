@@ -1,19 +1,18 @@
 [package]
-name          = "egl"
-version       = "0.2.7"
-authors       = ["Sean Kerr <sean@metatomic.io>"]
-license       = "Apache-2.0"
+name          = "khronos-egl"
+version       = "1.0.0"
+authors       = ["Timothée Haudebourg <author@haudebourg.net>", "Sean Kerr <sean@metatomic.io>"]
+license       = "MIT/Apache-2.0"
 description   = "Rust bindings for EGL"
-homepage      = "https://github.com/seankerr/rust-egl"
-repository    = "https://github.com/seankerr/rust-egl"
+repository    = "https://github.com/timothee-haudebourg/khronos-egl"
+documentation = "https://docs.rs/khronos-egl"
 readme        = "README.md"
 keywords      = ["egl", "gl", "khronos", "opengl"]
-exclude       = [".gitignore"]
 build         = "build.rs"
 
 [dependencies]
-khronos = "0.1.1"
-libc    = "0.2.16"
+khronos = "0.1.2"
+libc    = "0.2.60"
 
 [build-dependencies]
-pkg-config = "0.3.8"
+pkg-config = "0.3.15"
