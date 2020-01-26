@@ -122,7 +122,7 @@ pub fn choose_config(display: EGLDisplay, attrib_list: &[EGLint],
                      config_size: EGLint) -> Option<EGLConfig> {
     unsafe {
         let mut config: EGLConfig = ptr::null_mut();
-        let mut count:  EGLint = 0;;
+        let mut count:  EGLint = 0;
 
         let attribs = if attrib_list.len() > 0 {
             attrib_list.as_ptr()
@@ -718,6 +718,27 @@ pub fn wait_sync(dpy: EGLDisplay, sync: EGLSync, flags: EGLint) -> bool {
     unsafe {
         ffi::eglWaitSync(dpy, sync, flags) == EGL_TRUE
     }
+}
+
+pub fn error_message(error: EGLint) -> &'static str {
+	match error {
+		EGL_SUCCESS => "The last function succeeded without error.",
+		EGL_NOT_INITIALIZED => "EGL is not initialized, or could not be initialized, for the specified EGL display connection.",
+		EGL_BAD_ACCESS => "EGL cannot access a requested resource (for example a context is bound in another thread).",
+		EGL_BAD_ALLOC => "EGL failed to allocate resources for the requested operation.",
+		EGL_BAD_ATTRIBUTE => "An unrecognized attribute or attribute value was passed in the attribute list.",
+		EGL_BAD_CONTEXT => "An EGLContext argument does not name a valid EGL rendering context.",
+		EGL_BAD_CONFIG => "An EGLConfig argument does not name a valid EGL frame buffer configuration.",
+		EGL_BAD_CURRENT_SURFACE => "The current surface of the calling thread is a window, pixel buffer or pixmap that is no longer valid.",
+		EGL_BAD_DISPLAY => "An EGLDisplay argument does not name a valid EGL display connection.",
+		EGL_BAD_SURFACE => "An EGLSurface argument does not name a valid surface (window, pixel buffer or pixmap) configured for GL rendering.",
+		EGL_BAD_MATCH => "Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).",
+		EGL_BAD_PARAMETER => "One or more argument values are invalid.",
+		EGL_BAD_NATIVE_PIXMAP => "A NativePixmapType argument does not refer to a valid native pixmap.",
+		EGL_BAD_NATIVE_WINDOW => "A NativeWindowType argument does not refer to a valid native window.",
+		EGL_CONTEXT_LOST => "A power management event has occurred. The application must destroy all contexts and reinitialise OpenGL ES state and objects to continue rendering.",
+		_ => "Unknown error"
+	}
 }
 
 // -------------------------------------------------------------------------------------------------
