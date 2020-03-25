@@ -8,10 +8,11 @@ extern crate khronos;
 extern crate libc;
 
 // rust
-use std::fmt::{self, Display};
+use std::fmt;
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::ptr;
 
 // system
 use khronos::{ khronos_int32_t,
@@ -31,19 +32,19 @@ extern {}
 // EGL 1.0
 // ------------------------------------------------------------------------------------------------
 
-pub type EGLBoolean		   = c_uint;
-pub type EGLint			   = khronos_int32_t;
-pub type EGLDisplay		   = *mut c_void;
-pub type EGLConfig			= *mut c_void;
-pub type EGLContext		   = *mut c_void;
-pub type EGLSurface		   = *mut c_void;
-pub type EGLNativeDisplayType = *mut c_void;
+pub type Boolean			= c_uint;
+pub type Int				= khronos_int32_t;
+pub type Display			= *mut c_void;
+pub type Config				= *mut c_void;
+pub type Context			= *mut c_void;
+pub type Surface			= *mut c_void;
+pub type NativeDisplayType	= *mut c_void;
 
 #[cfg(not(android))]
-pub type EGLNativePixmapType = *mut c_void;
+pub type NativePixmapType = *mut c_void;
 
 #[cfg(not(android))]
-pub type EGLNativeWindowType = *mut c_void;
+pub type NativeWindowType = *mut c_void;
 
 #[repr(C)]
 #[cfg(android)]
@@ -54,70 +55,70 @@ struct android_native_window_t;
 struct egl_native_pixmap_t;
 
 #[cfg(android)]
-pub type EGLNativePixmapType = *mut egl_native_pixmap_t;
+pub type NativePixmapType = *mut egl_native_pixmap_t;
 
 #[cfg(android)]
-pub type EGLNativeWindowType = *mut android_native_window_t;
+pub type NativeWindowType = *mut android_native_window_t;
 
-pub const EGL_ALPHA_SIZE: EGLint = 0x3021;
-pub const EGL_BAD_ACCESS: EGLint = 0x3002;
-pub const EGL_BAD_ALLOC: EGLint = 0x3003;
-pub const EGL_BAD_ATTRIBUTE: EGLint = 0x3004;
-pub const EGL_BAD_CONFIG: EGLint = 0x3005;
-pub const EGL_BAD_CONTEXT: EGLint = 0x3006;
-pub const EGL_BAD_CURRENT_SURFACE: EGLint = 0x3007;
-pub const EGL_BAD_DISPLAY: EGLint = 0x3008;
-pub const EGL_BAD_MATCH: EGLint = 0x3009;
-pub const EGL_BAD_NATIVE_PIXMAP: EGLint = 0x300A;
-pub const EGL_BAD_NATIVE_WINDOW: EGLint = 0x300B;
-pub const EGL_BAD_PARAMETER: EGLint = 0x300C;
-pub const EGL_BAD_SURFACE: EGLint = 0x300D;
-pub const EGL_BLUE_SIZE: EGLint = 0x3022;
-pub const EGL_BUFFER_SIZE: EGLint = 0x3020;
-pub const EGL_CONFIG_CAVEAT: EGLint = 0x3027;
-pub const EGL_CONFIG_ID: EGLint = 0x3028;
-pub const EGL_CORE_NATIVE_ENGINE: EGLint = 0x305B;
-pub const EGL_DEPTH_SIZE: EGLint = 0x3025;
-pub const EGL_DONT_CARE: EGLint = -1;
-pub const EGL_DRAW: EGLint = 0x3059;
-pub const EGL_EXTENSIONS: EGLint = 0x3055;
-pub const EGL_FALSE: EGLBoolean = 0;
-pub const EGL_GREEN_SIZE: EGLint = 0x3023;
-pub const EGL_HEIGHT: EGLint = 0x3056;
-pub const EGL_LARGEST_PBUFFER: EGLint = 0x3058;
-pub const EGL_LEVEL: EGLint = 0x3029;
-pub const EGL_MAX_PBUFFER_HEIGHT: EGLint = 0x302A;
-pub const EGL_MAX_PBUFFER_PIXELS: EGLint = 0x302B;
-pub const EGL_MAX_PBUFFER_WIDTH: EGLint = 0x302C;
-pub const EGL_NATIVE_RENDERABLE: EGLint = 0x302D;
-pub const EGL_NATIVE_VISUAL_ID: EGLint = 0x302E;
-pub const EGL_NATIVE_VISUAL_TYPE: EGLint = 0x302F;
-pub const EGL_NONE: EGLint = 0x3038;
-pub const EGL_NON_CONFORMANT_CONFIG: EGLint = 0x3051;
-pub const EGL_NOT_INITIALIZED: EGLint = 0x3001;
-pub const EGL_NO_CONTEXT: EGLContext = 0 as EGLContext;
-pub const EGL_NO_DISPLAY: EGLDisplay = 0 as EGLDisplay;
-pub const EGL_NO_SURFACE: EGLSurface = 0 as EGLSurface;
-pub const EGL_PBUFFER_BIT: EGLint = 0x0001;
-pub const EGL_PIXMAP_BIT: EGLint = 0x0002;
-pub const EGL_READ: EGLint = 0x305A;
-pub const EGL_RED_SIZE: EGLint = 0x3024;
-pub const EGL_SAMPLES: EGLint = 0x3031;
-pub const EGL_SAMPLE_BUFFERS: EGLint = 0x3032;
-pub const EGL_SLOW_CONFIG: EGLint = 0x3050;
-pub const EGL_STENCIL_SIZE: EGLint = 0x3026;
-pub const EGL_SUCCESS: EGLint = 0x3000;
-pub const EGL_SURFACE_TYPE: EGLint = 0x3033;
-pub const EGL_TRANSPARENT_BLUE_VALUE: EGLint = 0x3035;
-pub const EGL_TRANSPARENT_GREEN_VALUE: EGLint = 0x3036;
-pub const EGL_TRANSPARENT_RED_VALUE: EGLint = 0x3037;
-pub const EGL_TRANSPARENT_RGB: EGLint = 0x3052;
-pub const EGL_TRANSPARENT_TYPE: EGLint = 0x3034;
-pub const EGL_TRUE: EGLBoolean = 1;
-pub const EGL_VENDOR: EGLint = 0x3053;
-pub const EGL_VERSION: EGLint = 0x3054;
-pub const EGL_WIDTH: EGLint = 0x3057;
-pub const EGL_WINDOW_BIT: EGLint = 0x0004;
+pub const ALPHA_SIZE: Int = 0x3021;
+pub const BAD_ACCESS: Int = 0x3002;
+pub const BAD_ALLOC: Int = 0x3003;
+pub const BAD_ATTRIBUTE: Int = 0x3004;
+pub const BAD_CONFIG: Int = 0x3005;
+pub const BAD_CONTEXT: Int = 0x3006;
+pub const BAD_CURRENT_SURFACE: Int = 0x3007;
+pub const BAD_DISPLAY: Int = 0x3008;
+pub const BAD_MATCH: Int = 0x3009;
+pub const BAD_NATIVE_PIXMAP: Int = 0x300A;
+pub const BAD_NATIVE_WINDOW: Int = 0x300B;
+pub const BAD_PARAMETER: Int = 0x300C;
+pub const BAD_SURFACE: Int = 0x300D;
+pub const BLUE_SIZE: Int = 0x3022;
+pub const BUFFER_SIZE: Int = 0x3020;
+pub const CONFIG_CAVEAT: Int = 0x3027;
+pub const CONFIG_ID: Int = 0x3028;
+pub const CORE_NATIVE_ENGINE: Int = 0x305B;
+pub const DEPTH_SIZE: Int = 0x3025;
+pub const DONT_CARE: Int = -1;
+pub const DRAW: Int = 0x3059;
+pub const EXTENSIONS: Int = 0x3055;
+pub const FALSE: Boolean = 0;
+pub const GREEN_SIZE: Int = 0x3023;
+pub const HEIGHT: Int = 0x3056;
+pub const LARGEST_PBUFFER: Int = 0x3058;
+pub const LEVEL: Int = 0x3029;
+pub const MAX_PBUFFER_HEIGHT: Int = 0x302A;
+pub const MAX_PBUFFER_PIXELS: Int = 0x302B;
+pub const MAX_PBUFFER_WIDTH: Int = 0x302C;
+pub const NATIVE_RENDERABLE: Int = 0x302D;
+pub const NATIVE_VISUAL_ID: Int = 0x302E;
+pub const NATIVE_VISUAL_TYPE: Int = 0x302F;
+pub const NONE: Int = 0x3038;
+pub const NON_CONFORMANT_CONFIG: Int = 0x3051;
+pub const NOT_INITIALIZED: Int = 0x3001;
+pub const NO_CONTEXT: Context = 0 as Context;
+pub const NO_DISPLAY: Display = 0 as Display;
+pub const NO_SURFACE: Surface = 0 as Surface;
+pub const PBUFFER_BIT: Int = 0x0001;
+pub const PIXMAP_BIT: Int = 0x0002;
+pub const READ: Int = 0x305A;
+pub const RED_SIZE: Int = 0x3024;
+pub const SAMPLES: Int = 0x3031;
+pub const SAMPLE_BUFFERS: Int = 0x3032;
+pub const SLOW_CONFIG: Int = 0x3050;
+pub const STENCIL_SIZE: Int = 0x3026;
+pub const SUCCESS: Int = 0x3000;
+pub const SURFACE_TYPE: Int = 0x3033;
+pub const TRANSPARENT_BLUE_VALUE: Int = 0x3035;
+pub const TRANSPARENT_GREEN_VALUE: Int = 0x3036;
+pub const TRANSPARENT_RED_VALUE: Int = 0x3037;
+pub const TRANSPARENT_RGB: Int = 0x3052;
+pub const TRANSPARENT_TYPE: Int = 0x3034;
+pub const TRUE: Boolean = 1;
+pub const VENDOR: Int = 0x3053;
+pub const VERSION: Int = 0x3054;
+pub const WIDTH: Int = 0x3057;
+pub const WINDOW_BIT: Int = 0x0004;
 
 /// EGL errors.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -134,19 +135,19 @@ pub enum Error {
 	/// An unrecognized attribute or attribute value was passed in the attribute list.
 	BadAttribute,
 
-	/// An EGLContext argument does not name a valid EGL rendering context.
+	/// An Context argument does not name a valid EGL rendering context.
 	BadContext,
 
-	/// An EGLConfig argument does not name a valid EGL frame buffer configuration.
+	/// An Config argument does not name a valid EGL frame buffer configuration.
 	BadConfig,
 
 	/// The current surface of the calling thread is a window, pixel buffer or pixmap that is no longer valid.
 	BadCurrentSurface,
 
-	/// An EGLDisplay argument does not name a valid EGL display connection.
+	/// An Display argument does not name a valid EGL display connection.
 	BadDisplay,
 
-	/// An EGLSurface argument does not name a valid surface (window, pixel buffer or pixmap) configured for GL rendering.
+	/// An Surface argument does not name a valid surface (window, pixel buffer or pixmap) configured for GL rendering.
 	BadSurface,
 
 	/// Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
@@ -166,23 +167,23 @@ pub enum Error {
 }
 
 impl Error {
-	pub fn native(&self) -> EGLint {
+	pub fn native(&self) -> Int {
 		use Error::*;
 		match self {
-			NotInitialized => EGL_NOT_INITIALIZED,
-			BadAccess => EGL_BAD_ACCESS,
-			BadAlloc => EGL_BAD_ALLOC,
-			BadAttribute => EGL_BAD_ATTRIBUTE,
-			BadContext => EGL_BAD_CONTEXT,
-			BadConfig => EGL_BAD_CONFIG,
-			BadCurrentSurface => EGL_BAD_CURRENT_SURFACE,
-			BadDisplay => EGL_BAD_DISPLAY,
-			BadSurface => EGL_BAD_SURFACE,
-			BadMatch => EGL_BAD_MATCH,
-			BadParameter => EGL_BAD_PARAMETER,
-			BadNativePixmap => EGL_BAD_NATIVE_PIXMAP,
-			BadNativeWindow => EGL_BAD_NATIVE_WINDOW,
-			ContextLost => EGL_CONTEXT_LOST
+			NotInitialized => NOT_INITIALIZED,
+			BadAccess => BAD_ACCESS,
+			BadAlloc => BAD_ALLOC,
+			BadAttribute => BAD_ATTRIBUTE,
+			BadContext => BAD_CONTEXT,
+			BadConfig => BAD_CONFIG,
+			BadCurrentSurface => BAD_CURRENT_SURFACE,
+			BadDisplay => BAD_DISPLAY,
+			BadSurface => BAD_SURFACE,
+			BadMatch => BAD_MATCH,
+			BadParameter => BAD_PARAMETER,
+			BadNativePixmap => BAD_NATIVE_PIXMAP,
+			BadNativeWindow => BAD_NATIVE_WINDOW,
+			ContextLost => CONTEXT_LOST
 		}
 	}
 
@@ -193,11 +194,11 @@ impl Error {
 			BadAccess => "EGL cannot access a requested resource (for example a context is bound in another thread.",
 			BadAlloc => "EGL failed to allocate resources for the requested operation.",
 			BadAttribute => "An unrecognized attribute or attribute value was passed in the attribute list.",
-			BadContext => "An EGLContext argument does not name a valid EGL rendering context.",
-			BadConfig => "An EGLConfig argument does not name a valid EGL frame buffer configuration.",
+			BadContext => "An Context argument does not name a valid EGL rendering context.",
+			BadConfig => "An Config argument does not name a valid EGL frame buffer configuration.",
 			BadCurrentSurface => "The current surface of the calling thread is a window, pixel buffer or pixmap that is no longer valid.",
-			BadDisplay => "An EGLDisplay argument does not name a valid EGL display connection.",
-			BadSurface => "An EGLSurface argument does not name a valid surface (window, pixel buffer or pixmap) configured for GL rendering.",
+			BadDisplay => "An Display argument does not name a valid EGL display connection.",
+			BadSurface => "An Surface argument does not name a valid surface (window, pixel buffer or pixmap) configured for GL rendering.",
 			BadMatch => "Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface.",
 			BadParameter => "One or more argument values are invalid.",
 			BadNativePixmap => "A NativePixmapType argument does not refer to a valid native pixmap.",
@@ -207,50 +208,81 @@ impl Error {
 	}
 }
 
-impl From<Error> for EGLint {
-	fn from(e: Error) -> EGLint {
+impl From<Error> for Int {
+	fn from(e: Error) -> Int {
 		e.native()
 	}
 }
 
-impl TryFrom<EGLint> for Error {
-	type Error = EGLint;
+impl TryFrom<Int> for Error {
+	type Error = Int;
 
-	fn try_from(e: EGLint) -> Result<Error, EGLint> {
+	fn try_from(e: Int) -> Result<Error, Int> {
 		use Error::*;
 		match e {
-			EGL_NOT_INITIALIZED => Ok(NotInitialized),
-			EGL_BAD_ACCESS => Ok(BadAccess),
-			EGL_BAD_ALLOC => Ok(BadAlloc),
-			EGL_BAD_ATTRIBUTE => Ok(BadAttribute),
-			EGL_BAD_CONTEXT => Ok(BadContext),
-			EGL_BAD_CONFIG => Ok(BadConfig),
-			EGL_BAD_CURRENT_SURFACE => Ok(BadCurrentSurface),
-			EGL_BAD_DISPLAY => Ok(BadDisplay),
-			EGL_BAD_SURFACE => Ok(BadSurface),
-			EGL_BAD_MATCH => Ok(BadMatch),
-			EGL_BAD_PARAMETER => Ok(BadParameter),
-			EGL_BAD_NATIVE_PIXMAP => Ok(BadNativePixmap),
-			EGL_BAD_NATIVE_WINDOW => Ok(BadNativeWindow),
-			EGL_CONTEXT_LOST => Ok(ContextLost),
+			NOT_INITIALIZED => Ok(NotInitialized),
+			BAD_ACCESS => Ok(BadAccess),
+			BAD_ALLOC => Ok(BadAlloc),
+			BAD_ATTRIBUTE => Ok(BadAttribute),
+			BAD_CONTEXT => Ok(BadContext),
+			BAD_CONFIG => Ok(BadConfig),
+			BAD_CURRENT_SURFACE => Ok(BadCurrentSurface),
+			BAD_DISPLAY => Ok(BadDisplay),
+			BAD_SURFACE => Ok(BadSurface),
+			BAD_MATCH => Ok(BadMatch),
+			BAD_PARAMETER => Ok(BadParameter),
+			BAD_NATIVE_PIXMAP => Ok(BadNativePixmap),
+			BAD_NATIVE_WINDOW => Ok(BadNativeWindow),
+			CONTEXT_LOST => Ok(ContextLost),
 			_ => Err(e)
 		}
 	}
 }
 
-impl Display for Error {
+impl fmt::Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		self.message().fmt(f)
 	}
 }
 
+/// Return the number of EGL frame buffer configurations that atch specified attributes.
+///
+/// This will call `eglChooseConfig` without `null` as `configs` to get the number of matching
+/// configurations.
+pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<usize, Error> {
+	unsafe {
+		let mut count = 0;
+
+		if ffi::eglChooseConfig(display, attrib_list.as_ptr(), ptr::null_mut(), 0, &mut count) == TRUE {
+			Ok(count as usize)
+		} else {
+			Err(get_error().unwrap())
+		}
+	}
+}
+
 /// Return a list of EGL frame buffer configurations that match specified attributes.
-pub fn choose_config(display: EGLDisplay, attrib_list: &[EGLint], configs: &mut Vec<EGLConfig>) -> Result<(), Error> {
+///
+/// This will write as many matching configurations in `configs` up to its capacity.
+/// You can use the function [`matching_config_count`] to get the exact number of configurations
+/// matching the specified attributes.
+///
+/// ## Example
+///
+/// ```
+/// // Get the number of matching configurations.
+/// let count = egl::matching_config_count(attrib_list)?;
+///
+/// // Get the matching configurations.
+/// let mut configs = Vec::with_capacity(count);
+/// egl::choose_config(display, attrib_list, &mut configs)?;
+/// ```
+pub fn choose_config(display: Display, attrib_list: &[Int], configs: &mut Vec<Config>) -> Result<(), Error> {
 	unsafe {
 		let capacity = configs.capacity();
 		let mut count = 0;
 
-		if ffi::eglChooseConfig(display, attrib_list.as_ptr(), configs.as_mut_ptr(), capacity.try_into().unwrap(), &mut count) == EGL_TRUE {
+		if ffi::eglChooseConfig(display, attrib_list.as_ptr(), configs.as_mut_ptr(), capacity.try_into().unwrap(), &mut count) == TRUE {
 			configs.set_len(count as usize);
 			Ok(())
 		} else {
@@ -259,10 +291,25 @@ pub fn choose_config(display: EGLDisplay, attrib_list: &[EGLint], configs: &mut 
 	}
 }
 
+/// Return the first EGL frame buffer configuration that match specified attributes.
+///
+/// This is an helper function that will call `choose_config` with a buffer of size 1, which is
+/// equivalent to:
+/// ```
+/// let mut configs = Vec::with_capacity(1);
+/// egl::choose_config(display, attrib_list, &mut configs)?;
+/// configs.first()
+/// ```
+pub fn choose_first_config(display: Display, attrib_list: &[Int]) -> Result<Option<Config>, Error> {
+	let mut configs = Vec::with_capacity(1);
+	choose_config(display, attrib_list, &mut configs)?;
+	Ok(configs.first().map(|config| *config))
+}
+
 /// Copy EGL surface color buffer to a native pixmap.
-pub fn copy_buffers(display: EGLDisplay, surface: EGLSurface, target: EGLNativePixmapType) -> Result<(), Error> {
+pub fn copy_buffers(display: Display, surface: Surface, target: NativePixmapType) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglCopyBuffers(display, surface, target) == EGL_TRUE {
+		if ffi::eglCopyBuffers(display, surface, target) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -271,11 +318,16 @@ pub fn copy_buffers(display: EGLDisplay, surface: EGLSurface, target: EGLNativeP
 }
 
 /// Create a new EGL rendering context.
-pub fn create_context(display: EGLDisplay, config: EGLConfig, share_context: EGLContext, attrib_list: &[EGLint]) -> Result<EGLContext, Error> {
+pub fn create_context(display: Display, config: Config, share_context: Option<Context>, attrib_list: &[Int]) -> Result<Context, Error> {
 	unsafe {
+		let share_context = match share_context {
+			Some(share_context) => share_context,
+			None => NO_CONTEXT
+		};
+
 		let context = ffi::eglCreateContext(display, config, share_context, attrib_list.as_ptr());
 
-		if context != EGL_NO_CONTEXT {
+		if context != NO_CONTEXT {
 			Ok(context)
 		} else {
 			Err(get_error().unwrap())
@@ -284,11 +336,11 @@ pub fn create_context(display: EGLDisplay, config: EGLConfig, share_context: EGL
 }
 
 /// Create a new EGL pixel buffer surface.
-pub fn create_pbuffer_surface(display: EGLDisplay, config: EGLConfig, attrib_list: &[EGLint]) -> Result<EGLSurface, Error> {
+pub fn create_pbuffer_surface(display: Display, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
 	unsafe {
 		let surface = ffi::eglCreatePbufferSurface(display, config, attrib_list.as_ptr());
 
-		if surface != EGL_NO_SURFACE {
+		if surface != NO_SURFACE {
 			Ok(surface)
 		} else {
 			Err(get_error().unwrap())
@@ -297,11 +349,11 @@ pub fn create_pbuffer_surface(display: EGLDisplay, config: EGLConfig, attrib_lis
 }
 
 /// Create a new EGL offscreen surface.
-pub fn create_pixmap_surface(display: EGLDisplay, config: EGLConfig, pixmap: EGLNativePixmapType, attrib_list: &[EGLint]) -> Result<EGLSurface, Error> {
+pub fn create_pixmap_surface(display: Display, config: Config, pixmap: NativePixmapType, attrib_list: &[Int]) -> Result<Surface, Error> {
 	unsafe {
 		let surface = ffi::eglCreatePixmapSurface(display, config, pixmap, attrib_list.as_ptr());
 
-		if surface != EGL_NO_SURFACE {
+		if surface != NO_SURFACE {
 			Ok(surface)
 		} else {
 			Err(get_error().unwrap())
@@ -310,11 +362,11 @@ pub fn create_pixmap_surface(display: EGLDisplay, config: EGLConfig, pixmap: EGL
 }
 
 /// Create a new EGL window surface.
-pub fn create_window_surface(display: EGLDisplay, config: EGLConfig, window: EGLNativeWindowType, attrib_list: &[EGLint]) -> Result<EGLSurface, Error> {
+pub fn create_window_surface(display: Display, config: Config, window: NativeWindowType, attrib_list: &[Int]) -> Result<Surface, Error> {
 	unsafe {
 		let surface = ffi::eglCreateWindowSurface(display, config, window, attrib_list.as_ptr());
 
-		if surface != EGL_NO_SURFACE {
+		if surface != NO_SURFACE {
 			Ok(surface)
 		} else {
 			Err(get_error().unwrap())
@@ -323,9 +375,9 @@ pub fn create_window_surface(display: EGLDisplay, config: EGLConfig, window: EGL
 }
 
 /// Destroy an EGL rendering context.
-pub fn destroy_context(display: EGLDisplay, ctx: EGLContext) -> Result<(), Error> {
+pub fn destroy_context(display: Display, ctx: Context) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglDestroyContext(display, ctx) == EGL_TRUE {
+		if ffi::eglDestroyContext(display, ctx) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -334,9 +386,9 @@ pub fn destroy_context(display: EGLDisplay, ctx: EGLContext) -> Result<(), Error
 }
 
 /// Destroy an EGL surface.
-pub fn destroy_surface(display: EGLDisplay, surface: EGLSurface) -> Result<(), Error> {
+pub fn destroy_surface(display: Display, surface: Surface) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglDestroySurface(display, surface) == EGL_TRUE {
+		if ffi::eglDestroySurface(display, surface) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -345,10 +397,10 @@ pub fn destroy_surface(display: EGLDisplay, surface: EGLSurface) -> Result<(), E
 }
 
 /// Return information about an EGL frame buffer configuration.
-pub fn get_config_attrib(display: EGLDisplay, config: EGLConfig, attribute: EGLint) -> Result<EGLint, Error> {
+pub fn get_config_attrib(display: Display, config: Config, attribute: Int) -> Result<Int, Error> {
 	unsafe {
-		let mut value: EGLint = 0;
-		if ffi::eglGetConfigAttrib(display, config, attribute, &mut value) == EGL_TRUE {
+		let mut value: Int = 0;
+		if ffi::eglGetConfigAttrib(display, config, attribute, &mut value) == TRUE {
 			Ok(value)
 		} else {
 			Err(get_error().unwrap())
@@ -357,12 +409,12 @@ pub fn get_config_attrib(display: EGLDisplay, config: EGLConfig, attribute: EGLi
 }
 
 /// Return a list of all EGL frame buffer configurations for a display.
-pub fn get_configs(display: EGLDisplay, configs: &mut Vec<EGLConfig>) -> Result<(), Error> {
+pub fn get_configs(display: Display, configs: &mut Vec<Config>) -> Result<(), Error> {
 	unsafe {
 		let capacity = configs.capacity();
 		let mut count = 0;
 
-		if ffi::eglGetConfigs(display, configs.as_mut_ptr(), capacity.try_into().unwrap(), &mut count) == EGL_TRUE {
+		if ffi::eglGetConfigs(display, configs.as_mut_ptr(), capacity.try_into().unwrap(), &mut count) == TRUE {
 			configs.set_len(count as usize);
 			Ok(())
 		} else {
@@ -372,11 +424,11 @@ pub fn get_configs(display: EGLDisplay, configs: &mut Vec<EGLConfig>) -> Result<
 }
 
 /// Return the display for the current EGL rendering context.
-pub fn get_current_display() -> Option<EGLDisplay> {
+pub fn get_current_display() -> Option<Display> {
 	unsafe {
 		let display = ffi::eglGetCurrentDisplay();
 
-		if display != EGL_NO_DISPLAY {
+		if display != NO_DISPLAY {
 			Some(display)
 		} else {
 			None
@@ -385,11 +437,11 @@ pub fn get_current_display() -> Option<EGLDisplay> {
 }
 
 /// Return the read or draw surface for the current EGL rendering context.
-pub fn get_current_surface(readdraw: EGLint) -> Option<EGLSurface> {
+pub fn get_current_surface(readdraw: Int) -> Option<Surface> {
 	unsafe {
 		let surface = ffi::eglGetCurrentSurface(readdraw);
 
-		if surface != EGL_NO_SURFACE {
+		if surface != NO_SURFACE {
 			Some(surface)
 		} else {
 			None
@@ -398,11 +450,11 @@ pub fn get_current_surface(readdraw: EGLint) -> Option<EGLSurface> {
 }
 
 /// Return an EGL display connection.
-pub fn get_display(display_id: EGLNativeDisplayType) -> Option<EGLDisplay> {
+pub fn get_display(display_id: NativeDisplayType) -> Option<Display> {
 	unsafe {
 		let display = ffi::eglGetDisplay(display_id);
 
-		if display != EGL_NO_DISPLAY {
+		if display != NO_DISPLAY {
 			Some(display)
 		} else {
 			None
@@ -413,15 +465,15 @@ pub fn get_display(display_id: EGLNativeDisplayType) -> Option<EGLDisplay> {
 /// Return error information.
 ///
 /// Return the error of the last called EGL function in the current thread, or `None` if the
-/// error is set to `EGL_SUCCESS`.
+/// error is set to `SUCCESS`.
 ///
-/// Note that since a call to `eglGetError` sets the error to `EGL_SUCCESS`, and since this
+/// Note that since a call to `eglGetError` sets the error to `SUCCESS`, and since this
 /// function is automatically called by any wrapper function returning a `Result` when necessary,
 /// this function may only return `None` from the point of view of a user.
 pub fn get_error() -> Option<Error> {
 	unsafe {
 		let e = ffi::eglGetError();
-		if e == EGL_SUCCESS {
+		if e == SUCCESS {
 			None
 		} else {
 			Some(e.try_into().unwrap())
@@ -444,12 +496,12 @@ pub fn get_proc_address(procname: &str) -> Option<extern "C" fn()> {
 }
 
 /// Initialize an EGL display connection.
-pub fn initialize(display: EGLDisplay) -> Result<(EGLint, EGLint), Error> {
+pub fn initialize(display: Display) -> Result<(Int, Int), Error> {
 	unsafe {
 		let mut major = 0;
 		let mut minor = 0;
 
-		if ffi::eglInitialize(display, &mut major, &mut minor) == EGL_TRUE {
+		if ffi::eglInitialize(display, &mut major, &mut minor) == TRUE {
 			Ok((major, minor))
 		} else {
 			Err(get_error().unwrap())
@@ -458,22 +510,22 @@ pub fn initialize(display: EGLDisplay) -> Result<(EGLint, EGLint), Error> {
 }
 
 /// Attach an EGL rendering context to EGL surfaces.
-pub fn make_current(display: EGLDisplay, draw: Option<EGLSurface>, read: Option<EGLSurface>, ctx: Option<EGLContext>) -> Result<(), Error> {
+pub fn make_current(display: Display, draw: Option<Surface>, read: Option<Surface>, ctx: Option<Context>) -> Result<(), Error> {
 	unsafe {
 		let draw = match draw {
 			Some(draw) => draw,
-			None => EGL_NO_SURFACE
+			None => NO_SURFACE
 		};
 		let read = match read {
 			Some(read) => read,
-			None => EGL_NO_SURFACE
+			None => NO_SURFACE
 		};
 		let ctx = match ctx {
 			Some(ctx) => ctx,
-			None => EGL_NO_CONTEXT
+			None => NO_CONTEXT
 		};
 
-		if ffi::eglMakeCurrent(display, draw, read, ctx) == EGL_TRUE {
+		if ffi::eglMakeCurrent(display, draw, read, ctx) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -482,10 +534,10 @@ pub fn make_current(display: EGLDisplay, draw: Option<EGLSurface>, read: Option<
 }
 
 /// Return EGL rendering context information.
-pub fn query_context(display: EGLDisplay, ctx: EGLContext, attribute: EGLint) -> Result<EGLint, Error> {
+pub fn query_context(display: Display, ctx: Context, attribute: Int) -> Result<Int, Error> {
 	unsafe {
 		let mut value = 0;
-		if ffi::eglQueryContext(display, ctx, attribute, &mut value) == EGL_TRUE {
+		if ffi::eglQueryContext(display, ctx, attribute, &mut value) == TRUE {
 			Ok(value)
 		} else {
 			Err(get_error().unwrap())
@@ -494,7 +546,7 @@ pub fn query_context(display: EGLDisplay, ctx: EGLContext, attribute: EGLint) ->
 }
 
 /// Return a string describing properties of the EGL client or of an EGL display connection.
-pub fn query_string(display: EGLDisplay, name: EGLint) -> Result<&'static CStr, Error> {
+pub fn query_string(display: Display, name: Int) -> Result<&'static CStr, Error> {
 	unsafe {
 		let c_str = ffi::eglQueryString(display, name);
 
@@ -507,10 +559,10 @@ pub fn query_string(display: EGLDisplay, name: EGLint) -> Result<&'static CStr, 
 }
 
 /// Return EGL surface information.
-pub fn query_surface(display: EGLDisplay, surface: EGLSurface, attribute: EGLint) -> Result<EGLint, Error> {
+pub fn query_surface(display: Display, surface: Surface, attribute: Int) -> Result<Int, Error> {
 	unsafe {
 		let mut value = 0;
-		if ffi::eglQuerySurface(display, surface, attribute, &mut value) == EGL_TRUE {
+		if ffi::eglQuerySurface(display, surface, attribute, &mut value) == TRUE {
 			Ok(value)
 		} else {
 			Err(get_error().unwrap())
@@ -519,9 +571,9 @@ pub fn query_surface(display: EGLDisplay, surface: EGLSurface, attribute: EGLint
 }
 
 /// Post EGL surface color buffer to a native window.
-pub fn swap_buffers(display: EGLDisplay, surface: EGLSurface) -> Result<(), Error> {
+pub fn swap_buffers(display: Display, surface: Surface) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglSwapBuffers(display, surface) == EGL_TRUE {
+		if ffi::eglSwapBuffers(display, surface) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -530,9 +582,9 @@ pub fn swap_buffers(display: EGLDisplay, surface: EGLSurface) -> Result<(), Erro
 }
 
 /// Terminate an EGL display connection.
-pub fn terminate(display: EGLDisplay) -> Result<(), Error> {
+pub fn terminate(display: Display) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglTerminate(display) == EGL_TRUE {
+		if ffi::eglTerminate(display) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -543,7 +595,7 @@ pub fn terminate(display: EGLDisplay) -> Result<(), Error> {
 /// Complete GL execution prior to subsequent native rendering calls.
 pub fn wait_gl() -> Result<(), Error> {
 	unsafe {
-		if ffi::eglWaitGL() == EGL_TRUE {
+		if ffi::eglWaitGL() == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -552,9 +604,9 @@ pub fn wait_gl() -> Result<(), Error> {
 }
 
 /// Complete native execution prior to subsequent GL rendering calls.
-pub fn wait_native(engine: EGLint) -> Result<(), Error> {
+pub fn wait_native(engine: Int) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglWaitNative(engine) == EGL_TRUE {
+		if ffi::eglWaitNative(engine) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -566,25 +618,25 @@ pub fn wait_native(engine: EGLint) -> Result<(), Error> {
 // EGL 1.1
 // ------------------------------------------------------------------------------------------------
 
-pub const EGL_BACK_BUFFER: EGLint = 0x3084;
-pub const EGL_BIND_TO_TEXTURE_RGB: EGLint = 0x3039;
-pub const EGL_BIND_TO_TEXTURE_RGBA: EGLint = 0x303A;
-pub const EGL_CONTEXT_LOST: EGLint = 0x300E;
-pub const EGL_MIN_SWAP_INTERVAL: EGLint = 0x303B;
-pub const EGL_MAX_SWAP_INTERVAL: EGLint = 0x303C;
-pub const EGL_MIPMAP_TEXTURE: EGLint = 0x3082;
-pub const EGL_MIPMAP_LEVEL: EGLint = 0x3083;
-pub const EGL_NO_TEXTURE: EGLint = 0x305C;
-pub const EGL_TEXTURE_2D: EGLint = 0x305F;
-pub const EGL_TEXTURE_FORMAT: EGLint = 0x3080;
-pub const EGL_TEXTURE_RGB: EGLint = 0x305D;
-pub const EGL_TEXTURE_RGBA: EGLint = 0x305E;
-pub const EGL_TEXTURE_TARGET: EGLint = 0x3081;
+pub const BACK_BUFFER: Int = 0x3084;
+pub const BIND_TO_TEXTURE_RGB: Int = 0x3039;
+pub const BIND_TO_TEXTURE_RGBA: Int = 0x303A;
+pub const CONTEXT_LOST: Int = 0x300E;
+pub const MIN_SWAP_INTERVAL: Int = 0x303B;
+pub const MAX_SWAP_INTERVAL: Int = 0x303C;
+pub const MIPMAP_TEXTURE: Int = 0x3082;
+pub const MIPMAP_LEVEL: Int = 0x3083;
+pub const NO_TEXTURE: Int = 0x305C;
+pub const TEXTURE_2D: Int = 0x305F;
+pub const TEXTURE_FORMAT: Int = 0x3080;
+pub const TEXTURE_RGB: Int = 0x305D;
+pub const TEXTURE_RGBA: Int = 0x305E;
+pub const TEXTURE_TARGET: Int = 0x3081;
 
 /// Defines a two-dimensional texture image.
-pub fn bind_tex_image(display: EGLDisplay, surface: EGLSurface, buffer: EGLint) -> Result<(), Error> {
+pub fn bind_tex_image(display: Display, surface: Surface, buffer: Int) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglBindTexImage(display, surface, buffer) == EGL_TRUE {
+		if ffi::eglBindTexImage(display, surface, buffer) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -593,9 +645,9 @@ pub fn bind_tex_image(display: EGLDisplay, surface: EGLSurface, buffer: EGLint) 
 }
 
 ///  Releases a color buffer that is being used as a texture.
-pub fn release_tex_image(display: EGLDisplay, surface: EGLSurface, buffer: EGLint) -> Result<(), Error> {
+pub fn release_tex_image(display: Display, surface: Surface, buffer: Int) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglReleaseTexImage(display, surface, buffer) == EGL_TRUE {
+		if ffi::eglReleaseTexImage(display, surface, buffer) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -604,9 +656,9 @@ pub fn release_tex_image(display: EGLDisplay, surface: EGLSurface, buffer: EGLin
 }
 
 /// Set an EGL surface attribute.
-pub fn surface_attrib(display: EGLDisplay, surface: EGLSurface, attribute: EGLint, value: EGLint) -> Result<(), Error> {
+pub fn surface_attrib(display: Display, surface: Surface, attribute: Int, value: Int) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglSurfaceAttrib(display, surface, attribute, value) == EGL_TRUE {
+		if ffi::eglSurfaceAttrib(display, surface, attribute, value) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -615,9 +667,9 @@ pub fn surface_attrib(display: EGLDisplay, surface: EGLSurface, attribute: EGLin
 }
 
 /// Specifies the minimum number of video frame periods per buffer swap for the window associated with the current context.
-pub fn swap_interval(display: EGLDisplay, interval: EGLint) -> Result<(), Error> {
+pub fn swap_interval(display: Display, interval: Int) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglSwapInterval(display, interval) == EGL_TRUE {
+		if ffi::eglSwapInterval(display, interval) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -629,43 +681,43 @@ pub fn swap_interval(display: EGLDisplay, interval: EGLint) -> Result<(), Error>
 // EGL 1.2
 // ------------------------------------------------------------------------------------------------
 
-pub type EGLenum			  = c_uint;
-pub type EGLClientBuffer	  = *mut c_void;
+pub type Enum			  = c_uint;
+pub type ClientBuffer	  = *mut c_void;
 
-pub const EGL_ALPHA_FORMAT: EGLint = 0x3088;
-pub const EGL_ALPHA_FORMAT_NONPRE: EGLint = 0x308B;
-pub const EGL_ALPHA_FORMAT_PRE: EGLint = 0x308C;
-pub const EGL_ALPHA_MASK_SIZE: EGLint = 0x303E;
-pub const EGL_BUFFER_PRESERVED: EGLint = 0x3094;
-pub const EGL_BUFFER_DESTROYED: EGLint = 0x3095;
-pub const EGL_CLIENT_APIS: EGLint = 0x308D;
-pub const EGL_COLORSPACE: EGLint = 0x3087;
-pub const EGL_COLORSPACE_sRGB: EGLint = 0x3089;
-pub const EGL_COLORSPACE_LINEAR: EGLint = 0x308A;
-pub const EGL_COLOR_BUFFER_TYPE: EGLint = 0x303F;
-pub const EGL_CONTEXT_CLIENT_TYPE: EGLint = 0x3097;
-pub const EGL_DISPLAY_SCALING: EGLint = 10000;
-pub const EGL_HORIZONTAL_RESOLUTION: EGLint = 0x3090;
-pub const EGL_LUMINANCE_BUFFER: EGLint = 0x308F;
-pub const EGL_LUMINANCE_SIZE: EGLint = 0x303D;
-pub const EGL_OPENGL_ES_BIT: EGLint = 0x0001;
-pub const EGL_OPENVG_BIT: EGLint = 0x0002;
-pub const EGL_OPENGL_ES_API: EGLenum = 0x30A0;
-pub const EGL_OPENVG_API: EGLenum = 0x30A1;
-pub const EGL_OPENVG_IMAGE: EGLint = 0x3096;
-pub const EGL_PIXEL_ASPECT_RATIO: EGLint = 0x3092;
-pub const EGL_RENDERABLE_TYPE: EGLint = 0x3040;
-pub const EGL_RENDER_BUFFER: EGLint = 0x3086;
-pub const EGL_RGB_BUFFER: EGLint = 0x308E;
-pub const EGL_SINGLE_BUFFER: EGLint = 0x3085;
-pub const EGL_SWAP_BEHAVIOR: EGLint = 0x3093;
-pub const EGL_UNKNOWN: EGLint = -1;
-pub const EGL_VERTICAL_RESOLUTION: EGLint = 0x3091;
+pub const ALPHA_FORMAT: Int = 0x3088;
+pub const ALPHA_FORMAT_NONPRE: Int = 0x308B;
+pub const ALPHA_FORMAT_PRE: Int = 0x308C;
+pub const ALPHA_MASK_SIZE: Int = 0x303E;
+pub const BUFFER_PRESERVED: Int = 0x3094;
+pub const BUFFER_DESTROYED: Int = 0x3095;
+pub const CLIENT_APIS: Int = 0x308D;
+pub const COLORSPACE: Int = 0x3087;
+pub const COLORSPACE_sRGB: Int = 0x3089;
+pub const COLORSPACE_LINEAR: Int = 0x308A;
+pub const COLOR_BUFFER_TYPE: Int = 0x303F;
+pub const CONTEXT_CLIENT_TYPE: Int = 0x3097;
+pub const DISPLAY_SCALING: Int = 10000;
+pub const HORIZONTAL_RESOLUTION: Int = 0x3090;
+pub const LUMINANCE_BUFFER: Int = 0x308F;
+pub const LUMINANCE_SIZE: Int = 0x303D;
+pub const OPENGL_ES_BIT: Int = 0x0001;
+pub const OPENVG_BIT: Int = 0x0002;
+pub const OPENGL_ES_API: Enum = 0x30A0;
+pub const OPENVG_API: Enum = 0x30A1;
+pub const OPENVG_IMAGE: Int = 0x3096;
+pub const PIXEL_ASPECT_RATIO: Int = 0x3092;
+pub const RENDERABLE_TYPE: Int = 0x3040;
+pub const RENDER_BUFFER: Int = 0x3086;
+pub const RGB_BUFFER: Int = 0x308E;
+pub const SINGLE_BUFFER: Int = 0x3085;
+pub const SWAP_BEHAVIOR: Int = 0x3093;
+pub const UNKNOWN: Int = -1;
+pub const VERTICAL_RESOLUTION: Int = 0x3091;
 
 /// Set the current rendering API.
-pub fn bind_api(api: EGLenum) -> Result<(), Error> {
+pub fn bind_api(api: Enum) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglBindAPI(api) == EGL_TRUE {
+		if ffi::eglBindAPI(api) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -674,18 +726,18 @@ pub fn bind_api(api: EGLenum) -> Result<(), Error> {
 }
 
 /// Query the current rendering API.
-pub fn query_api() -> EGLenum {
+pub fn query_api() -> Enum {
 	unsafe {
 		ffi::eglQueryAPI()
 	}
 }
 
 /// Create a new EGL pixel buffer surface bound to an OpenVG image.
-pub fn create_pbuffer_from_client_buffer(display: EGLDisplay, buffer_type: EGLenum, buffer: EGLClientBuffer, config: EGLConfig, attrib_list: &[EGLint]) -> Result<EGLSurface, Error> {
+pub fn create_pbuffer_from_client_buffer(display: Display, buffer_type: Enum, buffer: ClientBuffer, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
 	unsafe {
 		let surface = ffi::eglCreatePbufferFromClientBuffer(display, buffer_type, buffer, config, attrib_list.as_ptr());
 
-		if surface != EGL_NO_SURFACE {
+		if surface != NO_SURFACE {
 			Ok(surface)
 		} else {
 			Err(get_error().unwrap())
@@ -696,7 +748,7 @@ pub fn create_pbuffer_from_client_buffer(display: EGLDisplay, buffer_type: EGLen
 /// Release EGL per-thread state.
 pub fn release_thread() -> Result<(), Error> {
 	unsafe {
-		if ffi::eglReleaseThread() == EGL_TRUE {
+		if ffi::eglReleaseThread() == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -707,7 +759,7 @@ pub fn release_thread() -> Result<(), Error> {
 /// Complete client API execution prior to subsequent native rendering calls.
 pub fn wait_client() -> Result<(), Error> {
 	unsafe {
-		if ffi::eglWaitClient() == EGL_TRUE {
+		if ffi::eglWaitClient() == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -719,38 +771,38 @@ pub fn wait_client() -> Result<(), Error> {
 // EGL 1.3
 // ------------------------------------------------------------------------------------------------
 
-pub const EGL_CONFORMANT: EGLint = 0x3042;
-pub const EGL_CONTEXT_CLIENT_VERSION: EGLint = 0x3098;
-pub const EGL_MATCH_NATIVE_PIXMAP: EGLint = 0x3041;
-pub const EGL_OPENGL_ES2_BIT: EGLint = 0x0004;
-pub const EGL_VG_ALPHA_FORMAT: EGLint = 0x3088;
-pub const EGL_VG_ALPHA_FORMAT_NONPRE: EGLint = 0x308B;
-pub const EGL_VG_ALPHA_FORMAT_PRE: EGLint = 0x308C;
-pub const EGL_VG_ALPHA_FORMAT_PRE_BIT: EGLint = 0x0040;
-pub const EGL_VG_COLORSPACE: EGLint = 0x3087;
-pub const EGL_VG_COLORSPACE_sRGB: EGLint = 0x3089;
-pub const EGL_VG_COLORSPACE_LINEAR: EGLint = 0x308A;
-pub const EGL_VG_COLORSPACE_LINEAR_BIT: EGLint = 0x0020;
+pub const CONFORMANT: Int = 0x3042;
+pub const CONTEXT_CLIENT_VERSION: Int = 0x3098;
+pub const MATCH_NATIVE_PIXMAP: Int = 0x3041;
+pub const OPENGL_ES2_BIT: Int = 0x0004;
+pub const VG_ALPHA_FORMAT: Int = 0x3088;
+pub const VG_ALPHA_FORMAT_NONPRE: Int = 0x308B;
+pub const VG_ALPHA_FORMAT_PRE: Int = 0x308C;
+pub const VG_ALPHA_FORMAT_PRE_BIT: Int = 0x0040;
+pub const VG_COLORSPACE: Int = 0x3087;
+pub const VG_COLORSPACE_sRGB: Int = 0x3089;
+pub const VG_COLORSPACE_LINEAR: Int = 0x308A;
+pub const VG_COLORSPACE_LINEAR_BIT: Int = 0x0020;
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.4
 // ------------------------------------------------------------------------------------------------
 
-pub const EGL_DEFAULT_DISPLAY: EGLNativeDisplayType = 0 as EGLNativeDisplayType;
-pub const EGL_MULTISAMPLE_RESOLVE_BOX_BIT: EGLint = 0x0200;
-pub const EGL_MULTISAMPLE_RESOLVE: EGLint = 0x3099;
-pub const EGL_MULTISAMPLE_RESOLVE_DEFAULT: EGLint = 0x309A;
-pub const EGL_MULTISAMPLE_RESOLVE_BOX: EGLint = 0x309B;
-pub const EGL_OPENGL_API: EGLenum = 0x30A2;
-pub const EGL_OPENGL_BIT: EGLint = 0x0008;
-pub const EGL_SWAP_BEHAVIOR_PRESERVED_BIT: EGLint = 0x0400;
+pub const DEFAULT_DISPLAY: NativeDisplayType = 0 as NativeDisplayType;
+pub const MULTISAMPLE_RESOLVE_BOX_BIT: Int = 0x0200;
+pub const MULTISAMPLE_RESOLVE: Int = 0x3099;
+pub const MULTISAMPLE_RESOLVE_DEFAULT: Int = 0x309A;
+pub const MULTISAMPLE_RESOLVE_BOX: Int = 0x309B;
+pub const OPENGL_API: Enum = 0x30A2;
+pub const OPENGL_BIT: Int = 0x0008;
+pub const SWAP_BEHAVIOR_PRESERVED_BIT: Int = 0x0400;
 
 /// Return the current EGL rendering context.
-pub fn get_current_context() -> Option<EGLContext> {
+pub fn get_current_context() -> Option<Context> {
 	unsafe {
 		let context = ffi::eglGetCurrentContext();
 
-		if context != EGL_NO_CONTEXT {
+		if context != NO_CONTEXT {
 			Some(context)
 		} else {
 			None
@@ -762,60 +814,60 @@ pub fn get_current_context() -> Option<EGLContext> {
 // EGL 1.5
 // ------------------------------------------------------------------------------------------------
 
-pub type EGLSync			  = *mut c_void;
-pub type EGLAttrib			= usize;
-pub type EGLTime			  = khronos_utime_nanoseconds_t;
-pub type EGLImage			 = *mut c_void;
+pub type Sync			  = *mut c_void;
+pub type Attrib			= usize;
+pub type Time			  = khronos_utime_nanoseconds_t;
+pub type Image			 = *mut c_void;
 
-pub const EGL_CONTEXT_MAJOR_VERSION: EGLint = 0x3098;
-pub const EGL_CONTEXT_MINOR_VERSION: EGLint = 0x30FB;
-pub const EGL_CONTEXT_OPENGL_PROFILE_MASK: EGLint = 0x30FD;
-pub const EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY: EGLint = 0x31BD;
-pub const EGL_NO_RESET_NOTIFICATION: EGLint = 0x31BE;
-pub const EGL_LOSE_CONTEXT_ON_RESET: EGLint = 0x31BF;
-pub const EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT: EGLint = 0x00000001;
-pub const EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT: EGLint = 0x00000002;
-pub const EGL_CONTEXT_OPENGL_DEBUG: EGLint = 0x31B0;
-pub const EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE: EGLint = 0x31B1;
-pub const EGL_CONTEXT_OPENGL_ROBUST_ACCESS: EGLint = 0x31B2;
-pub const EGL_OPENGL_ES3_BIT: EGLint = 0x00000040;
-pub const EGL_CL_EVENT_HANDLE: EGLint = 0x309C;
-pub const EGL_SYNC_CL_EVENT: EGLint = 0x30FE;
-pub const EGL_SYNC_CL_EVENT_COMPLETE: EGLint = 0x30FF;
-pub const EGL_SYNC_PRIOR_COMMANDS_COMPLETE: EGLint = 0x30F0;
-pub const EGL_SYNC_TYPE: EGLint = 0x30F7;
-pub const EGL_SYNC_STATUS: EGLint = 0x30F1;
-pub const EGL_SYNC_CONDITION: EGLint = 0x30F8;
-pub const EGL_SIGNALED: EGLint = 0x30F2;
-pub const EGL_UNSIGNALED: EGLint = 0x30F3;
-pub const EGL_SYNC_FLUSH_COMMANDS_BIT: EGLint = 0x0001;
-pub const EGL_FOREVER: u64 = 0xFFFFFFFFFFFFFFFFu64;
-pub const EGL_TIMEOUT_EXPIRED: EGLint = 0x30F5;
-pub const EGL_CONDITION_SATISFIED: EGLint = 0x30F6;
-pub const EGL_NO_SYNC: EGLSync = 0 as EGLSync;
-pub const EGL_SYNC_FENCE: EGLint = 0x30F9;
-pub const EGL_GL_COLORSPACE: EGLint = 0x309D;
-pub const EGL_GL_COLORSPACE_SRGB: EGLint = 0x3089;
-pub const EGL_GL_COLORSPACE_LINEAR: EGLint = 0x308A;
-pub const EGL_GL_RENDERBUFFER: EGLint = 0x30B9;
-pub const EGL_GL_TEXTURE_2D: EGLint = 0x30B1;
-pub const EGL_GL_TEXTURE_LEVEL: EGLint = 0x30BC;
-pub const EGL_GL_TEXTURE_3D: EGLint = 0x30B2;
-pub const EGL_GL_TEXTURE_ZOFFSET: EGLint = 0x30BD;
-pub const EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X: EGLint = 0x30B3;
-pub const EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X: EGLint = 0x30B4;
-pub const EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Y: EGLint = 0x30B5;
-pub const EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y: EGLint = 0x30B6;
-pub const EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z: EGLint = 0x30B7;
-pub const EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: EGLint = 0x30B8;
-pub const EGL_IMAGE_PRESERVED: EGLint = 0x30D2;
-pub const EGL_NO_IMAGE: EGLImage = 0 as EGLImage;
+pub const CONTEXT_MAJOR_VERSION: Int = 0x3098;
+pub const CONTEXT_MINOR_VERSION: Int = 0x30FB;
+pub const CONTEXT_OPENGL_PROFILE_MASK: Int = 0x30FD;
+pub const CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY: Int = 0x31BD;
+pub const NO_RESET_NOTIFICATION: Int = 0x31BE;
+pub const LOSE_CONTEXT_ON_RESET: Int = 0x31BF;
+pub const CONTEXT_OPENGL_CORE_PROFILE_BIT: Int = 0x00000001;
+pub const CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT: Int = 0x00000002;
+pub const CONTEXT_OPENGL_DEBUG: Int = 0x31B0;
+pub const CONTEXT_OPENGL_FORWARD_COMPATIBLE: Int = 0x31B1;
+pub const CONTEXT_OPENGL_ROBUST_ACCESS: Int = 0x31B2;
+pub const OPENGL_ES3_BIT: Int = 0x00000040;
+pub const CL_EVENT_HANDLE: Int = 0x309C;
+pub const SYNC_CL_EVENT: Int = 0x30FE;
+pub const SYNC_CL_EVENT_COMPLETE: Int = 0x30FF;
+pub const SYNC_PRIOR_COMMANDS_COMPLETE: Int = 0x30F0;
+pub const SYNC_TYPE: Int = 0x30F7;
+pub const SYNC_STATUS: Int = 0x30F1;
+pub const SYNC_CONDITION: Int = 0x30F8;
+pub const SIGNALED: Int = 0x30F2;
+pub const UNSIGNALED: Int = 0x30F3;
+pub const SYNC_FLUSH_COMMANDS_BIT: Int = 0x0001;
+pub const FOREVER: u64 = 0xFFFFFFFFFFFFFFFFu64;
+pub const TIMEOUT_EXPIRED: Int = 0x30F5;
+pub const CONDITION_SATISFIED: Int = 0x30F6;
+pub const NO_SYNC: Sync = 0 as Sync;
+pub const SYNC_FENCE: Int = 0x30F9;
+pub const GL_COLORSPACE: Int = 0x309D;
+pub const GL_COLORSPACE_SRGB: Int = 0x3089;
+pub const GL_COLORSPACE_LINEAR: Int = 0x308A;
+pub const GL_RENDERBUFFER: Int = 0x30B9;
+pub const GL_TEXTURE_2D: Int = 0x30B1;
+pub const GL_TEXTURE_LEVEL: Int = 0x30BC;
+pub const GL_TEXTURE_3D: Int = 0x30B2;
+pub const GL_TEXTURE_ZOFFSET: Int = 0x30BD;
+pub const GL_TEXTURE_CUBE_MAP_POSITIVE_X: Int = 0x30B3;
+pub const GL_TEXTURE_CUBE_MAP_NEGATIVE_X: Int = 0x30B4;
+pub const GL_TEXTURE_CUBE_MAP_POSITIVE_Y: Int = 0x30B5;
+pub const GL_TEXTURE_CUBE_MAP_NEGATIVE_Y: Int = 0x30B6;
+pub const GL_TEXTURE_CUBE_MAP_POSITIVE_Z: Int = 0x30B7;
+pub const GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: Int = 0x30B8;
+pub const IMAGE_PRESERVED: Int = 0x30D2;
+pub const NO_IMAGE: Image = 0 as Image;
 
 /// Create a new EGL sync object.
-pub fn create_sync(dpy: EGLDisplay, ty: EGLenum, attrib_list: &[EGLAttrib]) -> Result<EGLSync, Error> {
+pub fn create_sync(dpy: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
 	unsafe {
 		let sync = ffi::eglCreateSync(dpy, ty, attrib_list.as_ptr());
-		if sync != EGL_NO_SYNC {
+		if sync != NO_SYNC {
 			Ok(sync)
 		} else {
 			Err(get_error().unwrap())
@@ -824,9 +876,9 @@ pub fn create_sync(dpy: EGLDisplay, ty: EGLenum, attrib_list: &[EGLAttrib]) -> R
 }
 
 /// Destroy a sync object.
-pub fn destroy_sync(dpy: EGLDisplay, sync: EGLSync) -> Result<(), Error> {
+pub fn destroy_sync(dpy: Display, sync: Sync) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglDestroySync(dpy, sync) == EGL_TRUE {
+		if ffi::eglDestroySync(dpy, sync) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -835,10 +887,10 @@ pub fn destroy_sync(dpy: EGLDisplay, sync: EGLSync) -> Result<(), Error> {
 }
 
 /// Wait in the client for a sync object to be signalled.
-pub fn client_wait_sync(dpy: EGLDisplay, sync: EGLSync, flags: EGLint, timeout: EGLTime) -> Result<EGLint, Error> {
+pub fn client_wait_sync(dpy: Display, sync: Sync, flags: Int, timeout: Time) -> Result<Int, Error> {
 	unsafe {
 		let status = ffi::eglClientWaitSync(dpy, sync, flags, timeout);
-		if status != EGL_FALSE as EGLint {
+		if status != FALSE as Int {
 			Ok(status)
 		} else {
 			Err(get_error().unwrap())
@@ -847,10 +899,10 @@ pub fn client_wait_sync(dpy: EGLDisplay, sync: EGLSync, flags: EGLint, timeout: 
 }
 
 /// Return an attribute of a sync object.
-pub fn get_sync_attrib(dpy: EGLDisplay, sync: EGLSync, attribute: EGLint) -> Result<EGLAttrib, Error> {
+pub fn get_sync_attrib(dpy: Display, sync: Sync, attribute: Int) -> Result<Attrib, Error> {
 	unsafe {
 		let mut value = 0;
-		if ffi::eglGetSyncAttrib(dpy, sync, attribute, &mut value as *mut EGLAttrib) == EGL_TRUE {
+		if ffi::eglGetSyncAttrib(dpy, sync, attribute, &mut value as *mut Attrib) == TRUE {
 			Ok(value)
 		} else {
 			Err(get_error().unwrap())
@@ -858,11 +910,11 @@ pub fn get_sync_attrib(dpy: EGLDisplay, sync: EGLSync, attribute: EGLint) -> Res
 	}
 }
 
-/// Create a new EGLImage object.
-pub fn create_image(dpy: EGLDisplay, ctx: EGLContext, target: EGLenum, buffer: EGLClientBuffer, attrib_list: &[EGLAttrib]) -> Result<EGLImage, Error> {
+/// Create a new Image object.
+pub fn create_image(dpy: Display, ctx: Context, target: Enum, buffer: ClientBuffer, attrib_list: &[Attrib]) -> Result<Image, Error> {
 	unsafe {
 		let image = ffi::eglCreateImage(dpy, ctx, target, buffer, attrib_list.as_ptr());
-		if image != EGL_NO_IMAGE {
+		if image != NO_IMAGE {
 			Ok(image)
 		} else {
 			Err(get_error().unwrap())
@@ -870,10 +922,10 @@ pub fn create_image(dpy: EGLDisplay, ctx: EGLContext, target: EGLenum, buffer: E
 	}
 }
 
-/// Destroy an EGLImage object.
-pub fn destroy_image(dpy: EGLDisplay, image: EGLImage) -> Result<(), Error> {
+/// Destroy an Image object.
+pub fn destroy_image(dpy: Display, image: Image) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglDestroyImage(dpy, image) == EGL_TRUE {
+		if ffi::eglDestroyImage(dpy, image) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -882,10 +934,10 @@ pub fn destroy_image(dpy: EGLDisplay, image: EGLImage) -> Result<(), Error> {
 }
 
 /// Return an EGL display connection.
-pub fn get_platform_display(platform: EGLenum, native_display: *mut c_void, attrib_list: &[EGLAttrib]) -> Result<EGLDisplay, Error> {
+pub fn get_platform_display(platform: Enum, native_display: *mut c_void, attrib_list: &[Attrib]) -> Result<Display, Error> {
 	unsafe {
 		let display = ffi::eglGetPlatformDisplay(platform, native_display, attrib_list.as_ptr());
-		if display != EGL_NO_DISPLAY {
+		if display != NO_DISPLAY {
 			Ok(display)
 		} else {
 			Err(get_error().unwrap())
@@ -894,10 +946,10 @@ pub fn get_platform_display(platform: EGLenum, native_display: *mut c_void, attr
 }
 
 /// Create a new EGL on-screen rendering surface.
-pub fn create_platform_window_surface(dpy: EGLDisplay, config: EGLConfig, native_window: *mut c_void, attrib_list: &[EGLAttrib]) -> Result<EGLSurface, Error> {
+pub fn create_platform_window_surface(dpy: Display, config: Config, native_window: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
 	unsafe {
 		let surface = ffi::eglCreatePlatformWindowSurface(dpy, config, native_window, attrib_list.as_ptr());
-		if surface != EGL_NO_SURFACE {
+		if surface != NO_SURFACE {
 			Ok(surface)
 		} else {
 			Err(get_error().unwrap())
@@ -906,10 +958,10 @@ pub fn create_platform_window_surface(dpy: EGLDisplay, config: EGLConfig, native
 }
 
 /// Create a new EGL offscreen surface.
-pub fn create_platform_pixmap_surface(dpy: EGLDisplay, config: EGLConfig, native_pixmap: *mut c_void, attrib_list: &[EGLAttrib]) -> Result<EGLSurface, Error> {
+pub fn create_platform_pixmap_surface(dpy: Display, config: Config, native_pixmap: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
 	unsafe {
 		let surface = ffi::eglCreatePlatformPixmapSurface(dpy, config, native_pixmap, attrib_list.as_ptr());
-		if surface != EGL_NO_SURFACE {
+		if surface != NO_SURFACE {
 			Ok(surface)
 		} else {
 			Err(get_error().unwrap())
@@ -918,9 +970,9 @@ pub fn create_platform_pixmap_surface(dpy: EGLDisplay, config: EGLConfig, native
 }
 
 /// Wait in the server for a sync object to be signalled.
-pub fn wait_sync(dpy: EGLDisplay, sync: EGLSync, flags: EGLint) -> Result<(), Error> {
+pub fn wait_sync(dpy: Display, sync: Sync, flags: Int) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglWaitSync(dpy, sync, flags) == EGL_TRUE {
+		if ffi::eglWaitSync(dpy, sync, flags) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -936,75 +988,75 @@ mod ffi {
 	use libc::{ c_char,
 				c_void };
 
-	use super::{ EGLBoolean,
-				 EGLClientBuffer,
-				 EGLConfig,
-				 EGLContext,
-				 EGLDisplay,
-				 EGLenum,
-				 EGLint,
-				 EGLNativeDisplayType,
-				 EGLNativePixmapType,
-				 EGLNativeWindowType,
-				 EGLSurface,
-				 EGLAttrib,
-				 EGLSync,
-				 EGLTime,
-				 EGLImage };
+	use super::{ Boolean,
+				 ClientBuffer,
+				 Config,
+				 Context,
+				 Display,
+				 Enum,
+				 Int,
+				 NativeDisplayType,
+				 NativePixmapType,
+				 NativeWindowType,
+				 Surface,
+				 Attrib,
+				 Sync,
+				 Time,
+				 Image };
 
 	extern {
 		// EGL 1.0
-		pub fn eglChooseConfig(dpy: EGLDisplay, attrib_list: *const EGLint, configs: *mut EGLConfig, config_size: EGLint, num_config: *mut EGLint) -> EGLBoolean;
-		pub fn eglCopyBuffers(dpy: EGLDisplay, surface: EGLSurface, target: EGLNativePixmapType) -> EGLBoolean;
-		pub fn eglCreateContext(dpy: EGLDisplay, config: EGLConfig, share_context: EGLContext, attrib_list: *const EGLint) -> EGLContext;
-		pub fn eglCreatePbufferSurface(dpy: EGLDisplay, config: EGLConfig, attrib_list: *const EGLint) -> EGLSurface;
-		pub fn eglCreatePixmapSurface(dpy: EGLDisplay, config: EGLConfig, pixmap: EGLNativePixmapType, attrib_list: *const EGLint) -> EGLSurface;
-		pub fn eglCreateWindowSurface(dpy: EGLDisplay, config: EGLConfig, win: EGLNativeWindowType, attrib_list: *const EGLint) -> EGLSurface;
-		pub fn eglDestroyContext(dpy: EGLDisplay, ctx: EGLContext) -> EGLBoolean;
-		pub fn eglDestroySurface(dpy: EGLDisplay, surface: EGLSurface) -> EGLBoolean;
-		pub fn eglGetConfigAttrib(dpy: EGLDisplay, config: EGLConfig, attribute: EGLint, value: *mut EGLint) -> EGLBoolean;
-		pub fn eglGetConfigs(dpy: EGLDisplay, configs: *mut EGLConfig, config_size: EGLint, num_config: *mut EGLint) -> EGLBoolean;
-		pub fn eglGetCurrentDisplay() -> EGLDisplay;
-		pub fn eglGetCurrentSurface(readdraw: EGLint) -> EGLSurface;
-		pub fn eglGetDisplay(display_id: EGLNativeDisplayType) -> EGLDisplay;
-		pub fn eglGetError() -> EGLint;
+		pub fn eglChooseConfig(dpy: Display, attrib_list: *const Int, configs: *mut Config, config_size: Int, num_config: *mut Int) -> Boolean;
+		pub fn eglCopyBuffers(dpy: Display, surface: Surface, target: NativePixmapType) -> Boolean;
+		pub fn eglCreateContext(dpy: Display, config: Config, share_context: Context, attrib_list: *const Int) -> Context;
+		pub fn eglCreatePbufferSurface(dpy: Display, config: Config, attrib_list: *const Int) -> Surface;
+		pub fn eglCreatePixmapSurface(dpy: Display, config: Config, pixmap: NativePixmapType, attrib_list: *const Int) -> Surface;
+		pub fn eglCreateWindowSurface(dpy: Display, config: Config, win: NativeWindowType, attrib_list: *const Int) -> Surface;
+		pub fn eglDestroyContext(dpy: Display, ctx: Context) -> Boolean;
+		pub fn eglDestroySurface(dpy: Display, surface: Surface) -> Boolean;
+		pub fn eglGetConfigAttrib(dpy: Display, config: Config, attribute: Int, value: *mut Int) -> Boolean;
+		pub fn eglGetConfigs(dpy: Display, configs: *mut Config, config_size: Int, num_config: *mut Int) -> Boolean;
+		pub fn eglGetCurrentDisplay() -> Display;
+		pub fn eglGetCurrentSurface(readdraw: Int) -> Surface;
+		pub fn eglGetDisplay(display_id: NativeDisplayType) -> Display;
+		pub fn eglGetError() -> Int;
 		pub fn eglGetProcAddress(procname: *const c_char) -> extern "C" fn();
-		pub fn eglInitialize(dpy: EGLDisplay, major: *mut EGLint, minor: *mut EGLint) -> EGLBoolean;
-		pub fn eglMakeCurrent(dpy: EGLDisplay, draw: EGLSurface, read: EGLSurface, ctx: EGLContext) -> EGLBoolean;
-		pub fn eglQueryContext(dpy: EGLDisplay, ctx: EGLContext, attribute: EGLint, value: *mut EGLint) -> EGLBoolean;
-		pub fn eglQueryString(dpy: EGLDisplay, name: EGLint) -> *const c_char;
-		pub fn eglQuerySurface(dpy: EGLDisplay, surface: EGLSurface, attribute: EGLint, value: *mut EGLint) -> EGLBoolean;
-		pub fn eglSwapBuffers(dpy: EGLDisplay, surface: EGLSurface) -> EGLBoolean;
-		pub fn eglTerminate(dpy: EGLDisplay) -> EGLBoolean;
-		pub fn eglWaitGL() -> EGLBoolean;
-		pub fn eglWaitNative(engine: EGLint) -> EGLBoolean;
+		pub fn eglInitialize(dpy: Display, major: *mut Int, minor: *mut Int) -> Boolean;
+		pub fn eglMakeCurrent(dpy: Display, draw: Surface, read: Surface, ctx: Context) -> Boolean;
+		pub fn eglQueryContext(dpy: Display, ctx: Context, attribute: Int, value: *mut Int) -> Boolean;
+		pub fn eglQueryString(dpy: Display, name: Int) -> *const c_char;
+		pub fn eglQuerySurface(dpy: Display, surface: Surface, attribute: Int, value: *mut Int) -> Boolean;
+		pub fn eglSwapBuffers(dpy: Display, surface: Surface) -> Boolean;
+		pub fn eglTerminate(dpy: Display) -> Boolean;
+		pub fn eglWaitGL() -> Boolean;
+		pub fn eglWaitNative(engine: Int) -> Boolean;
 
 		// EGL 1.1
-		pub fn eglBindTexImage(dpy: EGLDisplay, surface: EGLSurface, buffer: EGLint) -> EGLBoolean;
-		pub fn eglReleaseTexImage(dpy: EGLDisplay, surface: EGLSurface, buffer: EGLint) -> EGLBoolean;
-		pub fn eglSurfaceAttrib(dpy: EGLDisplay, surface: EGLSurface, attribute: EGLint, value: EGLint) -> EGLBoolean;
-		pub fn eglSwapInterval(dpy: EGLDisplay, interval: EGLint) -> EGLBoolean;
+		pub fn eglBindTexImage(dpy: Display, surface: Surface, buffer: Int) -> Boolean;
+		pub fn eglReleaseTexImage(dpy: Display, surface: Surface, buffer: Int) -> Boolean;
+		pub fn eglSurfaceAttrib(dpy: Display, surface: Surface, attribute: Int, value: Int) -> Boolean;
+		pub fn eglSwapInterval(dpy: Display, interval: Int) -> Boolean;
 
 		// EGL 1.2
-		pub fn eglBindAPI(api: EGLenum) -> EGLBoolean;
-		pub fn eglQueryAPI() -> EGLenum;
-		pub fn eglCreatePbufferFromClientBuffer(dpy: EGLDisplay, buftype: EGLenum, buffer: EGLClientBuffer, config: EGLConfig, attrib_list: *const EGLint) -> EGLSurface;
-		pub fn eglReleaseThread() -> EGLBoolean;
-		pub fn eglWaitClient() -> EGLBoolean;
+		pub fn eglBindAPI(api: Enum) -> Boolean;
+		pub fn eglQueryAPI() -> Enum;
+		pub fn eglCreatePbufferFromClientBuffer(dpy: Display, buftype: Enum, buffer: ClientBuffer, config: Config, attrib_list: *const Int) -> Surface;
+		pub fn eglReleaseThread() -> Boolean;
+		pub fn eglWaitClient() -> Boolean;
 
 		// EGL 1.4
-		pub fn eglGetCurrentContext() -> EGLContext;
+		pub fn eglGetCurrentContext() -> Context;
 
 		// EGL 1.5
-		pub fn eglCreateSync(dpy: EGLDisplay, type_: EGLenum, attrib_list: *const EGLAttrib) -> EGLSync;
-		pub fn eglDestroySync(dpy: EGLDisplay, sync: EGLSync) -> EGLBoolean;
-		pub fn eglClientWaitSync(dpy: EGLDisplay, sync: EGLSync, flags: EGLint, timeout: EGLTime) -> EGLint;
-		pub fn eglGetSyncAttrib(dpy: EGLDisplay, sync: EGLSync, attribute: EGLint, value: *mut EGLAttrib) -> EGLBoolean;
-		pub fn eglCreateImage(dpy: EGLDisplay, ctx: EGLContext, target: EGLenum, buffer: EGLClientBuffer, attrib_list: *const EGLAttrib) -> EGLImage;
-		pub fn eglDestroyImage(dpy: EGLDisplay, image: EGLImage) -> EGLBoolean;
-		pub fn eglGetPlatformDisplay(platform: EGLenum, native_display: *mut c_void, attrib_list: *const EGLAttrib) -> EGLDisplay;
-		pub fn eglCreatePlatformWindowSurface(dpy: EGLDisplay, config: EGLConfig, native_window: *mut c_void, attrib_list: *const EGLAttrib) -> EGLSurface;
-		pub fn eglCreatePlatformPixmapSurface(dpy: EGLDisplay, config: EGLConfig, native_pixmap: *mut c_void, attrib_list: *const EGLAttrib) -> EGLSurface;
-		pub fn eglWaitSync(dpy: EGLDisplay, sync: EGLSync, flags: EGLint) -> EGLBoolean;
+		pub fn eglCreateSync(dpy: Display, type_: Enum, attrib_list: *const Attrib) -> Sync;
+		pub fn eglDestroySync(dpy: Display, sync: Sync) -> Boolean;
+		pub fn eglClientWaitSync(dpy: Display, sync: Sync, flags: Int, timeout: Time) -> Int;
+		pub fn eglGetSyncAttrib(dpy: Display, sync: Sync, attribute: Int, value: *mut Attrib) -> Boolean;
+		pub fn eglCreateImage(dpy: Display, ctx: Context, target: Enum, buffer: ClientBuffer, attrib_list: *const Attrib) -> Image;
+		pub fn eglDestroyImage(dpy: Display, image: Image) -> Boolean;
+		pub fn eglGetPlatformDisplay(platform: Enum, native_display: *mut c_void, attrib_list: *const Attrib) -> Display;
+		pub fn eglCreatePlatformWindowSurface(dpy: Display, config: Config, native_window: *mut c_void, attrib_list: *const Attrib) -> Surface;
+		pub fn eglCreatePlatformPixmapSurface(dpy: Display, config: Config, native_pixmap: *mut c_void, attrib_list: *const Attrib) -> Surface;
+		pub fn eglWaitSync(dpy: Display, sync: Sync, flags: Int) -> Boolean;
 	}
 }
