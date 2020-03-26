@@ -199,6 +199,7 @@ pub const NATIVE_RENDERABLE: Int = 0x302D;
 pub const NATIVE_VISUAL_ID: Int = 0x302E;
 pub const NATIVE_VISUAL_TYPE: Int = 0x302F;
 pub const NONE: Int = 0x3038;
+pub const ATTRIB_NONE: Attrib = 0x3038;
 pub const NON_CONFORMANT_CONFIG: Int = 0x3051;
 pub const NOT_INITIALIZED: Int = 0x3001;
 pub const NO_CONTEXT: EGLContext = 0 as EGLContext;
@@ -350,11 +351,31 @@ impl fmt::Display for Error {
 	}
 }
 
+pub fn check_int_list(attrib_list: &[Int]) -> Result<(), Error> {
+	if attrib_list.last() == Some(&NONE) {
+		Ok(())
+	} else {
+		Err(Error::BadParameter)
+	}
+}
+
+pub fn check_attrib_list(attrib_list: &[Attrib]) -> Result<(), Error> {
+	if attrib_list.last() == Some(&ATTRIB_NONE) {
+		Ok(())
+	} else {
+		Err(Error::BadParameter)
+	}
+}
+
 /// Return the number of EGL frame buffer configurations that atch specified attributes.
 ///
 /// This will call `eglChooseConfig` without `null` as `configs` to get the number of matching
 /// configurations.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `NONE`).
 pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<usize, Error> {
+	check_int_list(attrib_list)?;
 	unsafe {
 		let mut count = 0;
 
@@ -382,7 +403,11 @@ pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<us
 /// let mut configs = Vec::with_capacity(count);
 /// egl::choose_config(display, attrib_list, &mut configs)?;
 /// ```
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `NONE`).
 pub fn choose_config(display: Display, attrib_list: &[Int], configs: &mut Vec<Config>) -> Result<(), Error> {
+	check_int_list(attrib_list)?;
 	unsafe {
 		let capacity = configs.capacity();
 		let mut count = 0;
@@ -423,7 +448,11 @@ pub fn copy_buffers(display: Display, surface: Surface, target: NativePixmapType
 }
 
 /// Create a new EGL rendering context.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `NONE`).
 pub fn create_context(display: Display, config: Config, share_context: Option<Context>, attrib_list: &[Int]) -> Result<Context, Error> {
+	check_int_list(attrib_list)?;
 	unsafe {
 		let share_context = match share_context {
 			Some(share_context) => share_context.as_ptr(),
@@ -441,7 +470,11 @@ pub fn create_context(display: Display, config: Config, share_context: Option<Co
 }
 
 /// Create a new EGL pixel buffer surface.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `NONE`).
 pub fn create_pbuffer_surface(display: Display, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
+	check_int_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreatePbufferSurface(display.as_ptr(), config.as_ptr(), attrib_list.as_ptr());
 
@@ -454,7 +487,11 @@ pub fn create_pbuffer_surface(display: Display, config: Config, attrib_list: &[I
 }
 
 /// Create a new EGL offscreen surface.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `NONE`).
 pub fn create_pixmap_surface(display: Display, config: Config, pixmap: NativePixmapType, attrib_list: &[Int]) -> Result<Surface, Error> {
+	check_int_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreatePixmapSurface(display.as_ptr(), config.as_ptr(), pixmap.as_ptr(), attrib_list.as_ptr());
 
@@ -467,7 +504,11 @@ pub fn create_pixmap_surface(display: Display, config: Config, pixmap: NativePix
 }
 
 /// Create a new EGL window surface.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `NONE`).
 pub fn create_window_surface(display: Display, config: Config, window: NativeWindowType, attrib_list: &[Int]) -> Result<Surface, Error> {
+	check_int_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreateWindowSurface(display.as_ptr(), config.as_ptr(), window.as_ptr(), attrib_list.as_ptr());
 
@@ -853,7 +894,11 @@ pub fn query_api() -> Enum {
 }
 
 /// Create a new EGL pixel buffer surface bound to an OpenVG image.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `NONE`).
 pub fn create_pbuffer_from_client_buffer(display: Display, buffer_type: Enum, buffer: ClientBuffer, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
+	check_int_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreatePbufferFromClientBuffer(display.as_ptr(), buffer_type, buffer.as_ptr(), config.as_ptr(), attrib_list.as_ptr());
 
@@ -1014,7 +1059,14 @@ pub const IMAGE_PRESERVED: Int = 0x30D2;
 pub const NO_IMAGE: EGLImage = 0 as EGLImage;
 
 /// Create a new EGL sync object.
+///
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
+/// `NONE` to terminate the attribute list.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_sync(dpy: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
+	check_attrib_list(attrib_list)?;
 	unsafe {
 		let sync = ffi::eglCreateSync(dpy.as_ptr(), ty, attrib_list.as_ptr());
 		if sync != NO_SYNC {
@@ -1061,7 +1113,14 @@ pub fn get_sync_attrib(dpy: Display, sync: Sync, attribute: Int) -> Result<Attri
 }
 
 /// Create a new Image object.
+///
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
+/// `NONE` to terminate the attribute list.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_image(dpy: Display, ctx: Context, target: Enum, buffer: ClientBuffer, attrib_list: &[Attrib]) -> Result<Image, Error> {
+	check_attrib_list(attrib_list)?;
 	unsafe {
 		let image = ffi::eglCreateImage(dpy.as_ptr(), ctx.as_ptr(), target, buffer.as_ptr(), attrib_list.as_ptr());
 		if image != NO_IMAGE {
@@ -1084,7 +1143,14 @@ pub fn destroy_image(dpy: Display, image: Image) -> Result<(), Error> {
 }
 
 /// Return an EGL display connection.
+///
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
+/// `NONE` to terminate the attribute list.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `ATTRIB_NONE`).
 pub fn get_platform_display(platform: Enum, native_display: *mut c_void, attrib_list: &[Attrib]) -> Result<Display, Error> {
+	check_attrib_list(attrib_list)?;
 	unsafe {
 		let display = ffi::eglGetPlatformDisplay(platform, native_display, attrib_list.as_ptr());
 		if display != NO_DISPLAY {
@@ -1096,7 +1162,14 @@ pub fn get_platform_display(platform: Enum, native_display: *mut c_void, attrib_
 }
 
 /// Create a new EGL on-screen rendering surface.
+///
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
+/// `NONE` to terminate the attribute list.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_platform_window_surface(dpy: Display, config: Config, native_window: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
+	check_attrib_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreatePlatformWindowSurface(dpy.as_ptr(), config.as_ptr(), native_window, attrib_list.as_ptr());
 		if surface != NO_SURFACE {
@@ -1108,7 +1181,14 @@ pub fn create_platform_window_surface(dpy: Display, config: Config, native_windo
 }
 
 /// Create a new EGL offscreen surface.
+///
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
+/// `NONE` to terminate the attribute list.
+///
+/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
+/// (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_platform_pixmap_surface(dpy: Display, config: Config, native_pixmap: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
+	check_attrib_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreatePlatformPixmapSurface(dpy.as_ptr(), config.as_ptr(), native_pixmap, attrib_list.as_ptr());
 		if surface != NO_SURFACE {
