@@ -8,37 +8,35 @@ extern crate khronos;
 extern crate libc;
 
 // rust
-use std::fmt;
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::fmt;
 use std::ptr;
 
 // system
-use khronos::{ khronos_int32_t,
-			   khronos_utime_nanoseconds_t };
+use khronos::{khronos_int32_t, khronos_utime_nanoseconds_t};
 
-use libc::{ c_uint,
-			c_void };
+use libc::{c_uint, c_void};
 
 // -------------------------------------------------------------------------------------------------
 // LINKING
 // -------------------------------------------------------------------------------------------------
 
 #[link(name = "EGL")]
-extern {}
+extern "C" {}
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.0
 // ------------------------------------------------------------------------------------------------
 
-pub type Boolean				= c_uint;
-pub type Int					= khronos_int32_t;
-pub type EGLDisplay				= *mut c_void;
-pub type EGLConfig				= *mut c_void;
-pub type EGLContext				= *mut c_void;
-pub type EGLSurface				= *mut c_void;
-pub type NativeDisplayType		= *mut c_void;
+pub type Boolean = c_uint;
+pub type Int = khronos_int32_t;
+pub type EGLDisplay = *mut c_void;
+pub type EGLConfig = *mut c_void;
+pub type EGLContext = *mut c_void;
+pub type EGLSurface = *mut c_void;
+pub type NativeDisplayType = *mut c_void;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Display(EGLDisplay);
@@ -101,10 +99,10 @@ impl Surface {
 }
 
 #[cfg(not(android))]
-pub type NativePixmapType	= *mut c_void;
+pub type NativePixmapType = *mut c_void;
 
 #[cfg(not(android))]
-pub type NativeWindowType	= *mut c_void;
+pub type NativeWindowType = *mut c_void;
 
 #[repr(C)]
 #[cfg(android)]
@@ -115,10 +113,10 @@ struct android_native_window_t;
 struct egl_native_pixmap_t;
 
 #[cfg(android)]
-pub type NativePixmapType	= *mut egl_native_pixmap_t;
+pub type NativePixmapType = *mut egl_native_pixmap_t;
 
 #[cfg(android)]
-pub type NativeWindowType	= *mut android_native_window_t;
+pub type NativeWindowType = *mut android_native_window_t;
 
 pub const ALPHA_SIZE: Int = 0x3021;
 pub const BAD_ACCESS: Int = 0x3002;
@@ -184,16 +182,19 @@ pub const WINDOW_BIT: Int = 0x0004;
 /// EGL errors.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Error {
-	/// EGL is not initialized, or could not be initialized, for the specified EGL display connection.
+	/// EGL is not initialized, or could not be initialized, for the specified
+	/// EGL display connection.
 	NotInitialized,
 
-	/// EGL cannot access a requested resource (for example a context is bound in another thread).
+	/// EGL cannot access a requested resource (for example a context is bound
+	/// in another thread).
 	BadAccess,
 
 	/// EGL failed to allocate resources for the requested operation.
 	BadAlloc,
 
-	/// An unrecognized attribute or attribute value was passed in the attribute list.
+	/// An unrecognized attribute or attribute value was passed in the attribute
+	/// list.
 	BadAttribute,
 
 	/// An Context argument does not name a valid EGL rendering context.
@@ -202,16 +203,19 @@ pub enum Error {
 	/// An Config argument does not name a valid EGL frame buffer configuration.
 	BadConfig,
 
-	/// The current surface of the calling thread is a window, pixel buffer or pixmap that is no longer valid.
+	/// The current surface of the calling thread is a window, pixel buffer or
+	/// pixmap that is no longer valid.
 	BadCurrentSurface,
 
 	/// An Display argument does not name a valid EGL display connection.
 	BadDisplay,
 
-	/// An Surface argument does not name a valid surface (window, pixel buffer or pixmap) configured for GL rendering.
+	/// An Surface argument does not name a valid surface (window, pixel buffer
+	/// or pixmap) configured for GL rendering.
 	BadSurface,
 
-	/// Arguments are inconsistent (for example, a valid context requires buffers not supplied by a valid surface).
+	/// Arguments are inconsistent (for example, a valid context requires
+	/// buffers not supplied by a valid surface).
 	BadMatch,
 
 	/// One or more argument values are invalid.
@@ -223,8 +227,10 @@ pub enum Error {
 	/// A NativeWindowType argument does not refer to a valid native window.
 	BadNativeWindow,
 
-	/// A power management event has occurred. The application must destroy all contexts and reinitialise OpenGL ES state and objects to continue rendering.
-	ContextLost
+	/// A power management event has occurred. The application must destroy all
+	/// contexts and reinitialise OpenGL ES state and objects to continue
+	/// rendering.
+	ContextLost,
 }
 
 impl Error {
@@ -244,7 +250,7 @@ impl Error {
 			BadParameter => BAD_PARAMETER,
 			BadNativePixmap => BAD_NATIVE_PIXMAP,
 			BadNativeWindow => BAD_NATIVE_WINDOW,
-			ContextLost => CONTEXT_LOST
+			ContextLost => CONTEXT_LOST,
 		}
 	}
 
@@ -295,7 +301,7 @@ impl TryFrom<Int> for Error {
 			BAD_NATIVE_PIXMAP => Ok(BadNativePixmap),
 			BAD_NATIVE_WINDOW => Ok(BadNativeWindow),
 			CONTEXT_LOST => Ok(ContextLost),
-			_ => Err(e)
+			_ => Err(e),
 		}
 	}
 }
@@ -322,19 +328,27 @@ pub fn check_attrib_list(attrib_list: &[Attrib]) -> Result<(), Error> {
 	}
 }
 
-/// Return the number of EGL frame buffer configurations that atch specified attributes.
+/// Return the number of EGL frame buffer configurations that atch specified
+/// attributes.
 ///
-/// This will call `eglChooseConfig` without `null` as `configs` to get the number of matching
-/// configurations.
+/// This will call `eglChooseConfig` without `null` as `configs` to get the
+/// number of matching configurations.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `NONE`).
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `NONE`).
 pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<usize, Error> {
 	check_int_list(attrib_list)?;
 	unsafe {
 		let mut count = 0;
 
-		if ffi::eglChooseConfig(display.as_ptr(), attrib_list.as_ptr(), ptr::null_mut(), 0, &mut count) == TRUE {
+		if ffi::eglChooseConfig(
+			display.as_ptr(),
+			attrib_list.as_ptr(),
+			ptr::null_mut(),
+			0,
+			&mut count,
+		) == TRUE
+		{
 			Ok(count as usize)
 		} else {
 			Err(get_error().unwrap())
@@ -342,11 +356,12 @@ pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<us
 	}
 }
 
-/// Return a list of EGL frame buffer configurations that match specified attributes.
+/// Return a list of EGL frame buffer configurations that match specified
+/// attributes.
 ///
-/// This will write as many matching configurations in `configs` up to its capacity.
-/// You can use the function [`matching_config_count`] to get the exact number of configurations
-/// matching the specified attributes.
+/// This will write as many matching configurations in `configs` up to its
+/// capacity. You can use the function [`matching_config_count`] to get the
+/// exact number of configurations matching the specified attributes.
 ///
 /// ## Example
 ///
@@ -359,15 +374,26 @@ pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<us
 /// egl::choose_config(display, attrib_list, &mut configs)?;
 /// ```
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `NONE`).
-pub fn choose_config(display: Display, attrib_list: &[Int], configs: &mut Vec<Config>) -> Result<(), Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `NONE`).
+pub fn choose_config(
+	display: Display,
+	attrib_list: &[Int],
+	configs: &mut Vec<Config>,
+) -> Result<(), Error> {
 	check_int_list(attrib_list)?;
 	unsafe {
 		let capacity = configs.capacity();
 		let mut count = 0;
 
-		if ffi::eglChooseConfig(display.as_ptr(), attrib_list.as_ptr(), configs.as_mut_ptr() as *mut EGLConfig, capacity.try_into().unwrap(), &mut count) == TRUE {
+		if ffi::eglChooseConfig(
+			display.as_ptr(),
+			attrib_list.as_ptr(),
+			configs.as_mut_ptr() as *mut EGLConfig,
+			capacity.try_into().unwrap(),
+			&mut count,
+		) == TRUE
+		{
 			configs.set_len(count as usize);
 			Ok(())
 		} else {
@@ -376,10 +402,11 @@ pub fn choose_config(display: Display, attrib_list: &[Int], configs: &mut Vec<Co
 	}
 }
 
-/// Return the first EGL frame buffer configuration that match specified attributes.
+/// Return the first EGL frame buffer configuration that match specified
+/// attributes.
 ///
-/// This is an helper function that will call `choose_config` with a buffer of size 1, which is
-/// equivalent to:
+/// This is an helper function that will call `choose_config` with a buffer of
+/// size 1, which is equivalent to:
 /// ```
 /// let mut configs = Vec::with_capacity(1);
 /// egl::choose_config(display, attrib_list, &mut configs)?;
@@ -392,7 +419,11 @@ pub fn choose_first_config(display: Display, attrib_list: &[Int]) -> Result<Opti
 }
 
 /// Copy EGL surface color buffer to a native pixmap.
-pub fn copy_buffers(display: Display, surface: Surface, target: NativePixmapType) -> Result<(), Error> {
+pub fn copy_buffers(
+	display: Display,
+	surface: Surface,
+	target: NativePixmapType,
+) -> Result<(), Error> {
 	unsafe {
 		if ffi::eglCopyBuffers(display.as_ptr(), surface.as_ptr(), target) == TRUE {
 			Ok(())
@@ -404,17 +435,27 @@ pub fn copy_buffers(display: Display, surface: Surface, target: NativePixmapType
 
 /// Create a new EGL rendering context.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `NONE`).
-pub fn create_context(display: Display, config: Config, share_context: Option<Context>, attrib_list: &[Int]) -> Result<Context, Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `NONE`).
+pub fn create_context(
+	display: Display,
+	config: Config,
+	share_context: Option<Context>,
+	attrib_list: &[Int],
+) -> Result<Context, Error> {
 	check_int_list(attrib_list)?;
 	unsafe {
 		let share_context = match share_context {
 			Some(share_context) => share_context.as_ptr(),
-			None => NO_CONTEXT
+			None => NO_CONTEXT,
 		};
 
-		let context = ffi::eglCreateContext(display.as_ptr(), config.as_ptr(), share_context, attrib_list.as_ptr());
+		let context = ffi::eglCreateContext(
+			display.as_ptr(),
+			config.as_ptr(),
+			share_context,
+			attrib_list.as_ptr(),
+		);
 
 		if context != NO_CONTEXT {
 			Ok(Context(context))
@@ -426,12 +467,17 @@ pub fn create_context(display: Display, config: Config, share_context: Option<Co
 
 /// Create a new EGL pixel buffer surface.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `NONE`).
-pub fn create_pbuffer_surface(display: Display, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `NONE`).
+pub fn create_pbuffer_surface(
+	display: Display,
+	config: Config,
+	attrib_list: &[Int],
+) -> Result<Surface, Error> {
 	check_int_list(attrib_list)?;
 	unsafe {
-		let surface = ffi::eglCreatePbufferSurface(display.as_ptr(), config.as_ptr(), attrib_list.as_ptr());
+		let surface =
+			ffi::eglCreatePbufferSurface(display.as_ptr(), config.as_ptr(), attrib_list.as_ptr());
 
 		if surface != NO_SURFACE {
 			Ok(Surface(surface))
@@ -443,14 +489,24 @@ pub fn create_pbuffer_surface(display: Display, config: Config, attrib_list: &[I
 
 /// Create a new EGL offscreen surface.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `NONE`).
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `NONE`).
 ///
-/// Since this function may raise undefined behavior if the display and native pixmap do not
-/// belong to the same platform, it is inherently unsafe.
-pub unsafe fn create_pixmap_surface(display: Display, config: Config, pixmap: NativePixmapType, attrib_list: &[Int]) -> Result<Surface, Error> {
+/// Since this function may raise undefined behavior if the display and native
+/// pixmap do not belong to the same platform, it is inherently unsafe.
+pub unsafe fn create_pixmap_surface(
+	display: Display,
+	config: Config,
+	pixmap: NativePixmapType,
+	attrib_list: &[Int],
+) -> Result<Surface, Error> {
 	check_int_list(attrib_list)?;
-	let surface = ffi::eglCreatePixmapSurface(display.as_ptr(), config.as_ptr(), pixmap, attrib_list.as_ptr());
+	let surface = ffi::eglCreatePixmapSurface(
+		display.as_ptr(),
+		config.as_ptr(),
+		pixmap,
+		attrib_list.as_ptr(),
+	);
 
 	if surface != NO_SURFACE {
 		Ok(Surface(surface))
@@ -461,21 +517,27 @@ pub unsafe fn create_pixmap_surface(display: Display, config: Config, pixmap: Na
 
 /// Create a new EGL window surface.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `NONE`).
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `NONE`).
 ///
-/// Since this function may raise undefined behavior if the display and native window do not
-/// belong to the same platform, it is inherently unsafe.
-pub unsafe fn create_window_surface(display: Display, config: Config, window: NativeWindowType, attrib_list: Option<&[Int]>) -> Result<Surface, Error> {
+/// Since this function may raise undefined behavior if the display and native
+/// window do not belong to the same platform, it is inherently unsafe.
+pub unsafe fn create_window_surface(
+	display: Display,
+	config: Config,
+	window: NativeWindowType,
+	attrib_list: Option<&[Int]>,
+) -> Result<Surface, Error> {
 	let attrib_list = match attrib_list {
 		Some(attrib_list) => {
 			check_int_list(attrib_list)?;
 			attrib_list.as_ptr()
-		},
-		None => ptr::null()
+		}
+		None => ptr::null(),
 	};
 
-	let surface = ffi::eglCreateWindowSurface(display.as_ptr(), config.as_ptr(), window, attrib_list);
+	let surface =
+		ffi::eglCreateWindowSurface(display.as_ptr(), config.as_ptr(), window, attrib_list);
 
 	if surface != NO_SURFACE {
 		Ok(Surface(surface))
@@ -510,7 +572,8 @@ pub fn destroy_surface(display: Display, surface: Surface) -> Result<(), Error> 
 pub fn get_config_attrib(display: Display, config: Config, attribute: Int) -> Result<Int, Error> {
 	unsafe {
 		let mut value: Int = 0;
-		if ffi::eglGetConfigAttrib(display.as_ptr(), config.as_ptr(), attribute, &mut value) == TRUE {
+		if ffi::eglGetConfigAttrib(display.as_ptr(), config.as_ptr(), attribute, &mut value) == TRUE
+		{
 			Ok(value)
 		} else {
 			Err(get_error().unwrap())
@@ -524,7 +587,13 @@ pub fn get_configs(display: Display, configs: &mut Vec<Config>) -> Result<(), Er
 		let capacity = configs.capacity();
 		let mut count = 0;
 
-		if ffi::eglGetConfigs(display.as_ptr(), configs.as_mut_ptr() as *mut EGLConfig, capacity.try_into().unwrap(), &mut count) == TRUE {
+		if ffi::eglGetConfigs(
+			display.as_ptr(),
+			configs.as_mut_ptr() as *mut EGLConfig,
+			capacity.try_into().unwrap(),
+			&mut count,
+		) == TRUE
+		{
 			configs.set_len(count as usize);
 			Ok(())
 		} else {
@@ -574,12 +643,13 @@ pub fn get_display(display_id: NativeDisplayType) -> Option<Display> {
 
 /// Return error information.
 ///
-/// Return the error of the last called EGL function in the current thread, or `None` if the
-/// error is set to `SUCCESS`.
+/// Return the error of the last called EGL function in the current thread, or
+/// `None` if the error is set to `SUCCESS`.
 ///
-/// Note that since a call to `eglGetError` sets the error to `SUCCESS`, and since this
-/// function is automatically called by any wrapper function returning a `Result` when necessary,
-/// this function may only return `None` from the point of view of a user.
+/// Note that since a call to `eglGetError` sets the error to `SUCCESS`, and
+/// since this function is automatically called by any wrapper function
+/// returning a `Result` when necessary, this function may only return `None`
+/// from the point of view of a user.
 pub fn get_error() -> Option<Error> {
 	unsafe {
 		let e = ffi::eglGetError();
@@ -620,19 +690,24 @@ pub fn initialize(display: Display) -> Result<(Int, Int), Error> {
 }
 
 /// Attach an EGL rendering context to EGL surfaces.
-pub fn make_current(display: Display, draw: Option<Surface>, read: Option<Surface>, ctx: Option<Context>) -> Result<(), Error> {
+pub fn make_current(
+	display: Display,
+	draw: Option<Surface>,
+	read: Option<Surface>,
+	ctx: Option<Context>,
+) -> Result<(), Error> {
 	unsafe {
 		let draw = match draw {
 			Some(draw) => draw.as_ptr(),
-			None => NO_SURFACE
+			None => NO_SURFACE,
 		};
 		let read = match read {
 			Some(read) => read.as_ptr(),
-			None => NO_SURFACE
+			None => NO_SURFACE,
 		};
 		let ctx = match ctx {
 			Some(ctx) => ctx.as_ptr(),
-			None => NO_CONTEXT
+			None => NO_CONTEXT,
 		};
 
 		if ffi::eglMakeCurrent(display.as_ptr(), draw, read, ctx) == TRUE {
@@ -655,7 +730,8 @@ pub fn query_context(display: Display, ctx: Context, attribute: Int) -> Result<I
 	}
 }
 
-/// Return a string describing properties of the EGL client or of an EGL display connection.
+/// Return a string describing properties of the EGL client or of an EGL display
+/// connection.
 pub fn query_string(display: Display, name: Int) -> Result<&'static CStr, Error> {
 	unsafe {
 		let c_str = ffi::eglQueryString(display.as_ptr(), name);
@@ -766,7 +842,12 @@ pub fn release_tex_image(display: Display, surface: Surface, buffer: Int) -> Res
 }
 
 /// Set an EGL surface attribute.
-pub fn surface_attrib(display: Display, surface: Surface, attribute: Int, value: Int) -> Result<(), Error> {
+pub fn surface_attrib(
+	display: Display,
+	surface: Surface,
+	attribute: Int,
+	value: Int,
+) -> Result<(), Error> {
 	unsafe {
 		if ffi::eglSurfaceAttrib(display.as_ptr(), surface.as_ptr(), attribute, value) == TRUE {
 			Ok(())
@@ -776,7 +857,8 @@ pub fn surface_attrib(display: Display, surface: Surface, attribute: Int, value:
 	}
 }
 
-/// Specifies the minimum number of video frame periods per buffer swap for the window associated with the current context.
+/// Specifies the minimum number of video frame periods per buffer swap for the
+/// window associated with the current context.
 pub fn swap_interval(display: Display, interval: Int) -> Result<(), Error> {
 	unsafe {
 		if ffi::eglSwapInterval(display.as_ptr(), interval) == TRUE {
@@ -791,8 +873,8 @@ pub fn swap_interval(display: Display, interval: Int) -> Result<(), Error> {
 // EGL 1.2
 // ------------------------------------------------------------------------------------------------
 
-pub type Enum				= c_uint;
-pub type EGLClientBuffer	= *mut c_void;
+pub type Enum = c_uint;
+pub type EGLClientBuffer = *mut c_void;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClientBuffer(EGLClientBuffer);
@@ -852,19 +934,29 @@ pub fn bind_api(api: Enum) -> Result<(), Error> {
 
 /// Query the current rendering API.
 pub fn query_api() -> Enum {
-	unsafe {
-		ffi::eglQueryAPI()
-	}
+	unsafe { ffi::eglQueryAPI() }
 }
 
 /// Create a new EGL pixel buffer surface bound to an OpenVG image.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `NONE`).
-pub fn create_pbuffer_from_client_buffer(display: Display, buffer_type: Enum, buffer: ClientBuffer, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `NONE`).
+pub fn create_pbuffer_from_client_buffer(
+	display: Display,
+	buffer_type: Enum,
+	buffer: ClientBuffer,
+	config: Config,
+	attrib_list: &[Int],
+) -> Result<Surface, Error> {
 	check_int_list(attrib_list)?;
 	unsafe {
-		let surface = ffi::eglCreatePbufferFromClientBuffer(display.as_ptr(), buffer_type, buffer.as_ptr(), config.as_ptr(), attrib_list.as_ptr());
+		let surface = ffi::eglCreatePbufferFromClientBuffer(
+			display.as_ptr(),
+			buffer_type,
+			buffer.as_ptr(),
+			config.as_ptr(),
+			attrib_list.as_ptr(),
+		);
 
 		if surface != NO_SURFACE {
 			Ok(Surface(surface))
@@ -943,10 +1035,10 @@ pub fn get_current_context() -> Option<Context> {
 // EGL 1.5
 // ------------------------------------------------------------------------------------------------
 
-pub type Attrib			= usize;
-pub type Time			= khronos_utime_nanoseconds_t;
-pub type EGLSync		= *mut c_void;
-pub type EGLImage		= *mut c_void;
+pub type Attrib = usize;
+pub type Time = khronos_utime_nanoseconds_t;
+pub type EGLSync = *mut c_void;
+pub type EGLImage = *mut c_void;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Sync(EGLSync);
@@ -1024,11 +1116,11 @@ pub const NO_IMAGE: EGLImage = 0 as EGLImage;
 
 /// Create a new EGL sync object.
 ///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
-/// `NONE` to terminate the attribute list.
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+/// instead of `NONE` to terminate the attribute list.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `ATTRIB_NONE`).
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_sync(dpy: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
 	check_attrib_list(attrib_list)?;
 	unsafe {
@@ -1068,7 +1160,13 @@ pub fn client_wait_sync(dpy: Display, sync: Sync, flags: Int, timeout: Time) -> 
 pub fn get_sync_attrib(dpy: Display, sync: Sync, attribute: Int) -> Result<Attrib, Error> {
 	unsafe {
 		let mut value = 0;
-		if ffi::eglGetSyncAttrib(dpy.as_ptr(), sync.as_ptr(), attribute, &mut value as *mut Attrib) == TRUE {
+		if ffi::eglGetSyncAttrib(
+			dpy.as_ptr(),
+			sync.as_ptr(),
+			attribute,
+			&mut value as *mut Attrib,
+		) == TRUE
+		{
 			Ok(value)
 		} else {
 			Err(get_error().unwrap())
@@ -1078,15 +1176,27 @@ pub fn get_sync_attrib(dpy: Display, sync: Sync, attribute: Int) -> Result<Attri
 
 /// Create a new Image object.
 ///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
-/// `NONE` to terminate the attribute list.
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+/// instead of `NONE` to terminate the attribute list.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `ATTRIB_NONE`).
-pub fn create_image(dpy: Display, ctx: Context, target: Enum, buffer: ClientBuffer, attrib_list: &[Attrib]) -> Result<Image, Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+pub fn create_image(
+	dpy: Display,
+	ctx: Context,
+	target: Enum,
+	buffer: ClientBuffer,
+	attrib_list: &[Attrib],
+) -> Result<Image, Error> {
 	check_attrib_list(attrib_list)?;
 	unsafe {
-		let image = ffi::eglCreateImage(dpy.as_ptr(), ctx.as_ptr(), target, buffer.as_ptr(), attrib_list.as_ptr());
+		let image = ffi::eglCreateImage(
+			dpy.as_ptr(),
+			ctx.as_ptr(),
+			target,
+			buffer.as_ptr(),
+			attrib_list.as_ptr(),
+		);
 		if image != NO_IMAGE {
 			Ok(Image(image))
 		} else {
@@ -1108,12 +1218,16 @@ pub fn destroy_image(dpy: Display, image: Image) -> Result<(), Error> {
 
 /// Return an EGL display connection.
 ///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
-/// `NONE` to terminate the attribute list.
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+/// instead of `NONE` to terminate the attribute list.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `ATTRIB_NONE`).
-pub fn get_platform_display(platform: Enum, native_display: *mut c_void, attrib_list: &[Attrib]) -> Result<Display, Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+pub fn get_platform_display(
+	platform: Enum,
+	native_display: *mut c_void,
+	attrib_list: &[Attrib],
+) -> Result<Display, Error> {
 	check_attrib_list(attrib_list)?;
 	unsafe {
 		let display = ffi::eglGetPlatformDisplay(platform, native_display, attrib_list.as_ptr());
@@ -1127,15 +1241,25 @@ pub fn get_platform_display(platform: Enum, native_display: *mut c_void, attrib_
 
 /// Create a new EGL on-screen rendering surface.
 ///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
-/// `NONE` to terminate the attribute list.
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+/// instead of `NONE` to terminate the attribute list.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `ATTRIB_NONE`).
-pub fn create_platform_window_surface(dpy: Display, config: Config, native_window: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+pub fn create_platform_window_surface(
+	dpy: Display,
+	config: Config,
+	native_window: *mut c_void,
+	attrib_list: &[Attrib],
+) -> Result<Surface, Error> {
 	check_attrib_list(attrib_list)?;
 	unsafe {
-		let surface = ffi::eglCreatePlatformWindowSurface(dpy.as_ptr(), config.as_ptr(), native_window, attrib_list.as_ptr());
+		let surface = ffi::eglCreatePlatformWindowSurface(
+			dpy.as_ptr(),
+			config.as_ptr(),
+			native_window,
+			attrib_list.as_ptr(),
+		);
 		if surface != NO_SURFACE {
 			Ok(Surface(surface))
 		} else {
@@ -1146,15 +1270,25 @@ pub fn create_platform_window_surface(dpy: Display, config: Config, native_windo
 
 /// Create a new EGL offscreen surface.
 ///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used instead of
-/// `NONE` to terminate the attribute list.
+/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+/// instead of `NONE` to terminate the attribute list.
 ///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
-/// (if it does not terminate with `ATTRIB_NONE`).
-pub fn create_platform_pixmap_surface(dpy: Display, config: Config, native_pixmap: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
+/// This will return a `BadParameter` error if `attrib_list` is not a valid
+/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+pub fn create_platform_pixmap_surface(
+	dpy: Display,
+	config: Config,
+	native_pixmap: *mut c_void,
+	attrib_list: &[Attrib],
+) -> Result<Surface, Error> {
 	check_attrib_list(attrib_list)?;
 	unsafe {
-		let surface = ffi::eglCreatePlatformPixmapSurface(dpy.as_ptr(), config.as_ptr(), native_pixmap, attrib_list.as_ptr());
+		let surface = ffi::eglCreatePlatformPixmapSurface(
+			dpy.as_ptr(),
+			config.as_ptr(),
+			native_pixmap,
+			attrib_list.as_ptr(),
+		);
 		if surface != NO_SURFACE {
 			Ok(Surface(surface))
 		} else {
@@ -1179,51 +1313,89 @@ pub fn wait_sync(dpy: Display, sync: Sync, flags: Int) -> Result<(), Error> {
 // -------------------------------------------------------------------------------------------------
 
 mod ffi {
-	use libc::{
-		c_char,
-		c_void
-	};
+	use libc::{c_char, c_void};
 
 	use super::{
-		Boolean,
-		EGLClientBuffer,
-		EGLConfig,
-		EGLContext,
-		EGLDisplay,
-		Enum,
-		Int,
-		NativeDisplayType,
-		NativePixmapType,
-		NativeWindowType,
-		EGLSurface,
-		Attrib,
-		EGLSync,
-		Time,
-		EGLImage
+		Attrib, Boolean, EGLClientBuffer, EGLConfig, EGLContext, EGLDisplay, EGLImage, EGLSurface,
+		EGLSync, Enum, Int, NativeDisplayType, NativePixmapType, NativeWindowType, Time,
 	};
 
-	extern {
+	extern "C" {
 		// EGL 1.0
-		pub fn eglChooseConfig(dpy: EGLDisplay, attrib_list: *const Int, configs: *mut EGLConfig, config_size: Int, num_config: *mut Int) -> Boolean;
-		pub fn eglCopyBuffers(dpy: EGLDisplay, surface: EGLSurface, target: NativePixmapType) -> Boolean;
-		pub fn eglCreateContext(dpy: EGLDisplay, config: EGLConfig, share_context: EGLContext, attrib_list: *const Int) -> EGLContext;
-		pub fn eglCreatePbufferSurface(dpy: EGLDisplay, config: EGLConfig, attrib_list: *const Int) -> EGLSurface;
-		pub fn eglCreatePixmapSurface(dpy: EGLDisplay, config: EGLConfig, pixmap: NativePixmapType, attrib_list: *const Int) -> EGLSurface;
-		pub fn eglCreateWindowSurface(dpy: EGLDisplay, config: EGLConfig, win: NativeWindowType, attrib_list: *const Int) -> EGLSurface;
+		pub fn eglChooseConfig(
+			dpy: EGLDisplay,
+			attrib_list: *const Int,
+			configs: *mut EGLConfig,
+			config_size: Int,
+			num_config: *mut Int,
+		) -> Boolean;
+		pub fn eglCopyBuffers(
+			dpy: EGLDisplay,
+			surface: EGLSurface,
+			target: NativePixmapType,
+		) -> Boolean;
+		pub fn eglCreateContext(
+			dpy: EGLDisplay,
+			config: EGLConfig,
+			share_context: EGLContext,
+			attrib_list: *const Int,
+		) -> EGLContext;
+		pub fn eglCreatePbufferSurface(
+			dpy: EGLDisplay,
+			config: EGLConfig,
+			attrib_list: *const Int,
+		) -> EGLSurface;
+		pub fn eglCreatePixmapSurface(
+			dpy: EGLDisplay,
+			config: EGLConfig,
+			pixmap: NativePixmapType,
+			attrib_list: *const Int,
+		) -> EGLSurface;
+		pub fn eglCreateWindowSurface(
+			dpy: EGLDisplay,
+			config: EGLConfig,
+			win: NativeWindowType,
+			attrib_list: *const Int,
+		) -> EGLSurface;
 		pub fn eglDestroyContext(dpy: EGLDisplay, ctx: EGLContext) -> Boolean;
 		pub fn eglDestroySurface(dpy: EGLDisplay, surface: EGLSurface) -> Boolean;
-		pub fn eglGetConfigAttrib(dpy: EGLDisplay, config: EGLConfig, attribute: Int, value: *mut Int) -> Boolean;
-		pub fn eglGetConfigs(dpy: EGLDisplay, configs: *mut EGLConfig, config_size: Int, num_config: *mut Int) -> Boolean;
+		pub fn eglGetConfigAttrib(
+			dpy: EGLDisplay,
+			config: EGLConfig,
+			attribute: Int,
+			value: *mut Int,
+		) -> Boolean;
+		pub fn eglGetConfigs(
+			dpy: EGLDisplay,
+			configs: *mut EGLConfig,
+			config_size: Int,
+			num_config: *mut Int,
+		) -> Boolean;
 		pub fn eglGetCurrentDisplay() -> EGLDisplay;
 		pub fn eglGetCurrentSurface(readdraw: Int) -> EGLSurface;
 		pub fn eglGetDisplay(display_id: NativeDisplayType) -> EGLDisplay;
 		pub fn eglGetError() -> Int;
 		pub fn eglGetProcAddress(procname: *const c_char) -> extern "C" fn();
 		pub fn eglInitialize(dpy: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
-		pub fn eglMakeCurrent(dpy: EGLDisplay, draw: EGLSurface, read: EGLSurface, ctx: EGLContext) -> Boolean;
-		pub fn eglQueryContext(dpy: EGLDisplay, ctx: EGLContext, attribute: Int, value: *mut Int) -> Boolean;
+		pub fn eglMakeCurrent(
+			dpy: EGLDisplay,
+			draw: EGLSurface,
+			read: EGLSurface,
+			ctx: EGLContext,
+		) -> Boolean;
+		pub fn eglQueryContext(
+			dpy: EGLDisplay,
+			ctx: EGLContext,
+			attribute: Int,
+			value: *mut Int,
+		) -> Boolean;
 		pub fn eglQueryString(dpy: EGLDisplay, name: Int) -> *const c_char;
-		pub fn eglQuerySurface(dpy: EGLDisplay, surface: EGLSurface, attribute: Int, value: *mut Int) -> Boolean;
+		pub fn eglQuerySurface(
+			dpy: EGLDisplay,
+			surface: EGLSurface,
+			attribute: Int,
+			value: *mut Int,
+		) -> Boolean;
 		pub fn eglSwapBuffers(dpy: EGLDisplay, surface: EGLSurface) -> Boolean;
 		pub fn eglTerminate(dpy: EGLDisplay) -> Boolean;
 		pub fn eglWaitGL() -> Boolean;
@@ -1232,13 +1404,24 @@ mod ffi {
 		// EGL 1.1
 		pub fn eglBindTexImage(dpy: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
 		pub fn eglReleaseTexImage(dpy: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
-		pub fn eglSurfaceAttrib(dpy: EGLDisplay, surface: EGLSurface, attribute: Int, value: Int) -> Boolean;
+		pub fn eglSurfaceAttrib(
+			dpy: EGLDisplay,
+			surface: EGLSurface,
+			attribute: Int,
+			value: Int,
+		) -> Boolean;
 		pub fn eglSwapInterval(dpy: EGLDisplay, interval: Int) -> Boolean;
 
 		// EGL 1.2
 		pub fn eglBindAPI(api: Enum) -> Boolean;
 		pub fn eglQueryAPI() -> Enum;
-		pub fn eglCreatePbufferFromClientBuffer(dpy: EGLDisplay, buftype: Enum, buffer: EGLClientBuffer, config: EGLConfig, attrib_list: *const Int) -> EGLSurface;
+		pub fn eglCreatePbufferFromClientBuffer(
+			dpy: EGLDisplay,
+			buftype: Enum,
+			buffer: EGLClientBuffer,
+			config: EGLConfig,
+			attrib_list: *const Int,
+		) -> EGLSurface;
 		pub fn eglReleaseThread() -> Boolean;
 		pub fn eglWaitClient() -> Boolean;
 
@@ -1249,12 +1432,37 @@ mod ffi {
 		pub fn eglCreateSync(dpy: EGLDisplay, type_: Enum, attrib_list: *const Attrib) -> EGLSync;
 		pub fn eglDestroySync(dpy: EGLDisplay, sync: EGLSync) -> Boolean;
 		pub fn eglClientWaitSync(dpy: EGLDisplay, sync: EGLSync, flags: Int, timeout: Time) -> Int;
-		pub fn eglGetSyncAttrib(dpy: EGLDisplay, sync: EGLSync, attribute: Int, value: *mut Attrib) -> Boolean;
-		pub fn eglCreateImage(dpy: EGLDisplay, ctx: EGLContext, target: Enum, buffer: EGLClientBuffer, attrib_list: *const Attrib) -> EGLImage;
+		pub fn eglGetSyncAttrib(
+			dpy: EGLDisplay,
+			sync: EGLSync,
+			attribute: Int,
+			value: *mut Attrib,
+		) -> Boolean;
+		pub fn eglCreateImage(
+			dpy: EGLDisplay,
+			ctx: EGLContext,
+			target: Enum,
+			buffer: EGLClientBuffer,
+			attrib_list: *const Attrib,
+		) -> EGLImage;
 		pub fn eglDestroyImage(dpy: EGLDisplay, image: EGLImage) -> Boolean;
-		pub fn eglGetPlatformDisplay(platform: Enum, native_display: *mut c_void, attrib_list: *const Attrib) -> EGLDisplay;
-		pub fn eglCreatePlatformWindowSurface(dpy: EGLDisplay, config: EGLConfig, native_window: *mut c_void, attrib_list: *const Attrib) -> EGLSurface;
-		pub fn eglCreatePlatformPixmapSurface(dpy: EGLDisplay, config: EGLConfig, native_pixmap: *mut c_void, attrib_list: *const Attrib) -> EGLSurface;
+		pub fn eglGetPlatformDisplay(
+			platform: Enum,
+			native_display: *mut c_void,
+			attrib_list: *const Attrib,
+		) -> EGLDisplay;
+		pub fn eglCreatePlatformWindowSurface(
+			dpy: EGLDisplay,
+			config: EGLConfig,
+			native_window: *mut c_void,
+			attrib_list: *const Attrib,
+		) -> EGLSurface;
+		pub fn eglCreatePlatformPixmapSurface(
+			dpy: EGLDisplay,
+			config: EGLConfig,
+			native_pixmap: *mut c_void,
+			attrib_list: *const Attrib,
+		) -> EGLSurface;
 		pub fn eglWaitSync(dpy: EGLDisplay, sync: EGLSync, flags: Int) -> Boolean;
 	}
 }
