@@ -16,3 +16,9 @@ libc    = "0.2.60"
 
 [build-dependencies]
 pkg-config = "0.3.15"
+
+[dev-dependencies]
+gl = "0.11"
+wayland-client = { version = "0.25" }
+wayland-protocols = { version = "0.25", features = [ "client" ] }
+wayland-egl = { version = "0.25" }
