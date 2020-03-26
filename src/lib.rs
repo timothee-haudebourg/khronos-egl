@@ -38,7 +38,7 @@ pub type EGLDisplay				= *mut c_void;
 pub type EGLConfig				= *mut c_void;
 pub type EGLContext				= *mut c_void;
 pub type EGLSurface				= *mut c_void;
-pub type EGLNativeDisplayType	= *mut c_void;
+pub type NativeDisplayType		= *mut c_void;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Display(EGLDisplay);
@@ -100,26 +100,11 @@ impl Surface {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NativeDisplayType(EGLNativeDisplayType);
-
-impl NativeDisplayType {
-	#[inline]
-	pub unsafe fn from_ptr(ptr: EGLNativeDisplayType) -> NativeDisplayType {
-		NativeDisplayType(ptr)
-	}
-
-	#[inline]
-	pub fn as_ptr(&self) -> EGLNativeDisplayType {
-		self.0
-	}
-}
+#[cfg(not(android))]
+pub type NativePixmapType	= *mut c_void;
 
 #[cfg(not(android))]
-pub type EGLNativePixmapType	= *mut c_void;
-
-#[cfg(not(android))]
-pub type EGLNativeWindowType	= *mut c_void;
+pub type NativeWindowType	= *mut c_void;
 
 #[repr(C)]
 #[cfg(android)]
@@ -130,40 +115,10 @@ struct android_native_window_t;
 struct egl_native_pixmap_t;
 
 #[cfg(android)]
-pub type EGLNativePixmapType	= *mut egl_native_pixmap_t;
+pub type NativePixmapType	= *mut egl_native_pixmap_t;
 
 #[cfg(android)]
-pub type NativeWindowType		= *mut android_native_window_t;
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NativePixmapType(EGLNativePixmapType);
-
-impl NativePixmapType {
-	#[inline]
-	pub unsafe fn from_ptr(ptr: *mut c_void) -> NativePixmapType {
-		NativePixmapType(ptr)
-	}
-
-	#[inline]
-	pub fn as_ptr(&self) -> *mut c_void {
-		self.0
-	}
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NativeWindowType(EGLNativeWindowType);
-
-impl NativeWindowType {
-	#[inline]
-	pub unsafe fn from_ptr(ptr: EGLNativeWindowType) -> NativeWindowType {
-		NativeWindowType(ptr)
-	}
-
-	#[inline]
-	pub fn as_ptr(&self) -> EGLNativeWindowType {
-		self.0
-	}
-}
+pub type NativeWindowType	= *mut android_native_window_t;
 
 pub const ALPHA_SIZE: Int = 0x3021;
 pub const BAD_ACCESS: Int = 0x3002;
@@ -439,7 +394,7 @@ pub fn choose_first_config(display: Display, attrib_list: &[Int]) -> Result<Opti
 /// Copy EGL surface color buffer to a native pixmap.
 pub fn copy_buffers(display: Display, surface: Surface, target: NativePixmapType) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglCopyBuffers(display.as_ptr(), surface.as_ptr(), target.as_ptr()) == TRUE {
+		if ffi::eglCopyBuffers(display.as_ptr(), surface.as_ptr(), target) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -490,16 +445,17 @@ pub fn create_pbuffer_surface(display: Display, config: Config, attrib_list: &[I
 ///
 /// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
 /// (if it does not terminate with `NONE`).
-pub fn create_pixmap_surface(display: Display, config: Config, pixmap: NativePixmapType, attrib_list: &[Int]) -> Result<Surface, Error> {
+///
+/// Since this function may raise undefined behavior if the display and native pixmap do not
+/// belong to the same platform, it is inherently unsafe.
+pub unsafe fn create_pixmap_surface(display: Display, config: Config, pixmap: NativePixmapType, attrib_list: &[Int]) -> Result<Surface, Error> {
 	check_int_list(attrib_list)?;
-	unsafe {
-		let surface = ffi::eglCreatePixmapSurface(display.as_ptr(), config.as_ptr(), pixmap.as_ptr(), attrib_list.as_ptr());
+	let surface = ffi::eglCreatePixmapSurface(display.as_ptr(), config.as_ptr(), pixmap, attrib_list.as_ptr());
 
-		if surface != NO_SURFACE {
-			Ok(Surface(surface))
-		} else {
-			Err(get_error().unwrap())
-		}
+	if surface != NO_SURFACE {
+		Ok(Surface(surface))
+	} else {
+		Err(get_error().unwrap())
 	}
 }
 
@@ -507,16 +463,24 @@ pub fn create_pixmap_surface(display: Display, config: Config, pixmap: NativePix
 ///
 /// This will return a `BadParameter` error if `attrib_list` is not a valid attributes list
 /// (if it does not terminate with `NONE`).
-pub fn create_window_surface(display: Display, config: Config, window: NativeWindowType, attrib_list: &[Int]) -> Result<Surface, Error> {
-	check_int_list(attrib_list)?;
-	unsafe {
-		let surface = ffi::eglCreateWindowSurface(display.as_ptr(), config.as_ptr(), window.as_ptr(), attrib_list.as_ptr());
+///
+/// Since this function may raise undefined behavior if the display and native window do not
+/// belong to the same platform, it is inherently unsafe.
+pub unsafe fn create_window_surface(display: Display, config: Config, window: NativeWindowType, attrib_list: Option<&[Int]>) -> Result<Surface, Error> {
+	let attrib_list = match attrib_list {
+		Some(attrib_list) => {
+			check_int_list(attrib_list)?;
+			attrib_list.as_ptr()
+		},
+		None => ptr::null()
+	};
 
-		if surface != NO_SURFACE {
-			Ok(Surface(surface))
-		} else {
-			Err(get_error().unwrap())
-		}
+	let surface = ffi::eglCreateWindowSurface(display.as_ptr(), config.as_ptr(), window, attrib_list);
+
+	if surface != NO_SURFACE {
+		Ok(Surface(surface))
+	} else {
+		Err(get_error().unwrap())
 	}
 }
 
@@ -598,7 +562,7 @@ pub fn get_current_surface(readdraw: Int) -> Option<Surface> {
 /// Return an EGL display connection.
 pub fn get_display(display_id: NativeDisplayType) -> Option<Display> {
 	unsafe {
-		let display = ffi::eglGetDisplay(display_id.as_ptr());
+		let display = ffi::eglGetDisplay(display_id);
 
 		if display != NO_DISPLAY {
 			Some(Display(display))
@@ -953,7 +917,7 @@ pub const VG_COLORSPACE_LINEAR_BIT: Int = 0x0020;
 // EGL 1.4
 // ------------------------------------------------------------------------------------------------
 
-pub const DEFAULT_DISPLAY: EGLNativeDisplayType = 0 as EGLNativeDisplayType;
+pub const DEFAULT_DISPLAY: NativeDisplayType = 0 as NativeDisplayType;
 pub const MULTISAMPLE_RESOLVE_BOX_BIT: Int = 0x0200;
 pub const MULTISAMPLE_RESOLVE: Int = 0x3099;
 pub const MULTISAMPLE_RESOLVE_DEFAULT: Int = 0x309A;
@@ -1228,9 +1192,9 @@ mod ffi {
 		EGLDisplay,
 		Enum,
 		Int,
-		EGLNativeDisplayType,
-		EGLNativePixmapType,
-		EGLNativeWindowType,
+		NativeDisplayType,
+		NativePixmapType,
+		NativeWindowType,
 		EGLSurface,
 		Attrib,
 		EGLSync,
@@ -1241,18 +1205,18 @@ mod ffi {
 	extern {
 		// EGL 1.0
 		pub fn eglChooseConfig(dpy: EGLDisplay, attrib_list: *const Int, configs: *mut EGLConfig, config_size: Int, num_config: *mut Int) -> Boolean;
-		pub fn eglCopyBuffers(dpy: EGLDisplay, surface: EGLSurface, target: EGLNativePixmapType) -> Boolean;
+		pub fn eglCopyBuffers(dpy: EGLDisplay, surface: EGLSurface, target: NativePixmapType) -> Boolean;
 		pub fn eglCreateContext(dpy: EGLDisplay, config: EGLConfig, share_context: EGLContext, attrib_list: *const Int) -> EGLContext;
 		pub fn eglCreatePbufferSurface(dpy: EGLDisplay, config: EGLConfig, attrib_list: *const Int) -> EGLSurface;
-		pub fn eglCreatePixmapSurface(dpy: EGLDisplay, config: EGLConfig, pixmap: EGLNativePixmapType, attrib_list: *const Int) -> EGLSurface;
-		pub fn eglCreateWindowSurface(dpy: EGLDisplay, config: EGLConfig, win: EGLNativeWindowType, attrib_list: *const Int) -> EGLSurface;
+		pub fn eglCreatePixmapSurface(dpy: EGLDisplay, config: EGLConfig, pixmap: NativePixmapType, attrib_list: *const Int) -> EGLSurface;
+		pub fn eglCreateWindowSurface(dpy: EGLDisplay, config: EGLConfig, win: NativeWindowType, attrib_list: *const Int) -> EGLSurface;
 		pub fn eglDestroyContext(dpy: EGLDisplay, ctx: EGLContext) -> Boolean;
 		pub fn eglDestroySurface(dpy: EGLDisplay, surface: EGLSurface) -> Boolean;
 		pub fn eglGetConfigAttrib(dpy: EGLDisplay, config: EGLConfig, attribute: Int, value: *mut Int) -> Boolean;
 		pub fn eglGetConfigs(dpy: EGLDisplay, configs: *mut EGLConfig, config_size: Int, num_config: *mut Int) -> Boolean;
 		pub fn eglGetCurrentDisplay() -> EGLDisplay;
 		pub fn eglGetCurrentSurface(readdraw: Int) -> EGLSurface;
-		pub fn eglGetDisplay(display_id: EGLNativeDisplayType) -> EGLDisplay;
+		pub fn eglGetDisplay(display_id: NativeDisplayType) -> EGLDisplay;
 		pub fn eglGetError() -> Int;
 		pub fn eglGetProcAddress(procname: *const c_char) -> extern "C" fn();
 		pub fn eglInitialize(dpy: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
