@@ -38,7 +38,7 @@ pub type EGLContext = *mut c_void;
 pub type EGLSurface = *mut c_void;
 pub type NativeDisplayType = *mut c_void;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Display(EGLDisplay);
 
 impl Display {
@@ -53,7 +53,7 @@ impl Display {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Config(EGLConfig);
 
 impl Config {
@@ -68,7 +68,7 @@ impl Config {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Context(EGLContext);
 
 impl Context {
@@ -83,7 +83,7 @@ impl Context {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Surface(EGLSurface);
 
 impl Surface {
@@ -876,7 +876,7 @@ pub fn swap_interval(display: Display, interval: Int) -> Result<(), Error> {
 pub type Enum = c_uint;
 pub type EGLClientBuffer = *mut c_void;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ClientBuffer(EGLClientBuffer);
 
 impl ClientBuffer {
@@ -1040,7 +1040,7 @@ pub type Time = khronos_utime_nanoseconds_t;
 pub type EGLSync = *mut c_void;
 pub type EGLImage = *mut c_void;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Sync(EGLSync);
 
 impl Sync {
@@ -1055,7 +1055,7 @@ impl Sync {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Image(EGLImage);
 
 impl Image {
@@ -1127,13 +1127,11 @@ pub const NO_IMAGE: EGLImage = 0 as EGLImage;
 /// termination.
 pub unsafe fn create_sync(display: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
 	check_attrib_list(attrib_list)?;
-	unsafe {
-		let sync = ffi::eglCreateSync(display.as_ptr(), ty, attrib_list.as_ptr());
-		if sync != NO_SYNC {
-			Ok(Sync(sync))
-		} else {
-			Err(get_error().unwrap())
-		}
+	let sync = ffi::eglCreateSync(display.as_ptr(), ty, attrib_list.as_ptr());
+	if sync != NO_SYNC {
+		Ok(Sync(sync))
+	} else {
+		Err(get_error().unwrap())
 	}
 }
 
