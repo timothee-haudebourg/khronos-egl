@@ -1121,10 +1121,14 @@ pub const NO_IMAGE: EGLImage = 0 as EGLImage;
 ///
 /// This will return a `BadParameter` error if `attrib_list` is not a valid
 /// attributes list (if it does not terminate with `ATTRIB_NONE`).
-pub fn create_sync(dpy: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
+///
+/// This function is unsafe: when creating an OpenCL Event Sync Object, passing an invalid event
+/// handle in `attrib_list` may result in undefined behavior up to and including program
+/// termination.
+pub unsafe fn create_sync(display: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
 	check_attrib_list(attrib_list)?;
 	unsafe {
-		let sync = ffi::eglCreateSync(dpy.as_ptr(), ty, attrib_list.as_ptr());
+		let sync = ffi::eglCreateSync(display.as_ptr(), ty, attrib_list.as_ptr());
 		if sync != NO_SYNC {
 			Ok(Sync(sync))
 		} else {
@@ -1134,43 +1138,46 @@ pub fn create_sync(dpy: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Syn
 }
 
 /// Destroy a sync object.
-pub fn destroy_sync(dpy: Display, sync: Sync) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglDestroySync(dpy.as_ptr(), sync.as_ptr()) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
-		}
+///
+/// This function is unsafe: if display does not match the display passed to eglCreateSync when
+/// sync was created, the behaviour is undefined.
+pub unsafe fn destroy_sync(display: Display, sync: Sync) -> Result<(), Error> {
+	if ffi::eglDestroySync(display.as_ptr(), sync.as_ptr()) == TRUE {
+		Ok(())
+	} else {
+		Err(get_error().unwrap())
 	}
 }
 
 /// Wait in the client for a sync object to be signalled.
-pub fn client_wait_sync(dpy: Display, sync: Sync, flags: Int, timeout: Time) -> Result<Int, Error> {
-	unsafe {
-		let status = ffi::eglClientWaitSync(dpy.as_ptr(), sync.as_ptr(), flags, timeout);
-		if status != FALSE as Int {
-			Ok(status)
-		} else {
-			Err(get_error().unwrap())
-		}
+///
+/// This function is unsafe: if `display` does not match the [`Display`] passed to [`create_sync`]
+/// when `sync` was created, the behaviour is undefined.
+pub unsafe fn client_wait_sync(display: Display, sync: Sync, flags: Int, timeout: Time) -> Result<Int, Error> {
+	let status = ffi::eglClientWaitSync(display.as_ptr(), sync.as_ptr(), flags, timeout);
+	if status != FALSE as Int {
+		Ok(status)
+	} else {
+		Err(get_error().unwrap())
 	}
 }
 
 /// Return an attribute of a sync object.
-pub fn get_sync_attrib(dpy: Display, sync: Sync, attribute: Int) -> Result<Attrib, Error> {
-	unsafe {
-		let mut value = 0;
-		if ffi::eglGetSyncAttrib(
-			dpy.as_ptr(),
-			sync.as_ptr(),
-			attribute,
-			&mut value as *mut Attrib,
-		) == TRUE
-		{
-			Ok(value)
-		} else {
-			Err(get_error().unwrap())
-		}
+///
+/// This function is unsafe: If `display` does not match the [`Display`] passed to [`create_sync`]
+/// when `sync` was created, behaviour is undefined.
+pub unsafe fn get_sync_attrib(display: Display, sync: Sync, attribute: Int) -> Result<Attrib, Error> {
+	let mut value = 0;
+	if ffi::eglGetSyncAttrib(
+		display.as_ptr(),
+		sync.as_ptr(),
+		attribute,
+		&mut value as *mut Attrib,
+	) == TRUE
+	{
+		Ok(value)
+	} else {
+		Err(get_error().unwrap())
 	}
 }
 
@@ -1182,7 +1189,7 @@ pub fn get_sync_attrib(dpy: Display, sync: Sync, attribute: Int) -> Result<Attri
 /// This will return a `BadParameter` error if `attrib_list` is not a valid
 /// attributes list (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_image(
-	dpy: Display,
+	display: Display,
 	ctx: Context,
 	target: Enum,
 	buffer: ClientBuffer,
@@ -1191,7 +1198,7 @@ pub fn create_image(
 	check_attrib_list(attrib_list)?;
 	unsafe {
 		let image = ffi::eglCreateImage(
-			dpy.as_ptr(),
+			display.as_ptr(),
 			ctx.as_ptr(),
 			target,
 			buffer.as_ptr(),
@@ -1206,9 +1213,9 @@ pub fn create_image(
 }
 
 /// Destroy an Image object.
-pub fn destroy_image(dpy: Display, image: Image) -> Result<(), Error> {
+pub fn destroy_image(display: Display, image: Image) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglDestroyImage(dpy.as_ptr(), image.as_ptr()) == TRUE {
+		if ffi::eglDestroyImage(display.as_ptr(), image.as_ptr()) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -1247,7 +1254,7 @@ pub fn get_platform_display(
 /// This will return a `BadParameter` error if `attrib_list` is not a valid
 /// attributes list (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_platform_window_surface(
-	dpy: Display,
+	display: Display,
 	config: Config,
 	native_window: *mut c_void,
 	attrib_list: &[Attrib],
@@ -1255,7 +1262,7 @@ pub fn create_platform_window_surface(
 	check_attrib_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreatePlatformWindowSurface(
-			dpy.as_ptr(),
+			display.as_ptr(),
 			config.as_ptr(),
 			native_window,
 			attrib_list.as_ptr(),
@@ -1276,7 +1283,7 @@ pub fn create_platform_window_surface(
 /// This will return a `BadParameter` error if `attrib_list` is not a valid
 /// attributes list (if it does not terminate with `ATTRIB_NONE`).
 pub fn create_platform_pixmap_surface(
-	dpy: Display,
+	display: Display,
 	config: Config,
 	native_pixmap: *mut c_void,
 	attrib_list: &[Attrib],
@@ -1284,7 +1291,7 @@ pub fn create_platform_pixmap_surface(
 	check_attrib_list(attrib_list)?;
 	unsafe {
 		let surface = ffi::eglCreatePlatformPixmapSurface(
-			dpy.as_ptr(),
+			display.as_ptr(),
 			config.as_ptr(),
 			native_pixmap,
 			attrib_list.as_ptr(),
@@ -1298,9 +1305,12 @@ pub fn create_platform_pixmap_surface(
 }
 
 /// Wait in the server for a sync object to be signalled.
-pub fn wait_sync(dpy: Display, sync: Sync, flags: Int) -> Result<(), Error> {
+///
+/// This function is unsafe: if `display` does not match the [`Display`] passed to [`create_sync`]
+/// when `sync` was created, the behavior is undefined.
+pub fn wait_sync(display: Display, sync: Sync, flags: Int) -> Result<(), Error> {
 	unsafe {
-		if ffi::eglWaitSync(dpy.as_ptr(), sync.as_ptr(), flags) == TRUE {
+		if ffi::eglWaitSync(display.as_ptr(), sync.as_ptr(), flags) == TRUE {
 			Ok(())
 		} else {
 			Err(get_error().unwrap())
@@ -1323,50 +1333,50 @@ mod ffi {
 	extern "C" {
 		// EGL 1.0
 		pub fn eglChooseConfig(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			attrib_list: *const Int,
 			configs: *mut EGLConfig,
 			config_size: Int,
 			num_config: *mut Int,
 		) -> Boolean;
 		pub fn eglCopyBuffers(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			surface: EGLSurface,
 			target: NativePixmapType,
 		) -> Boolean;
 		pub fn eglCreateContext(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			config: EGLConfig,
 			share_context: EGLContext,
 			attrib_list: *const Int,
 		) -> EGLContext;
 		pub fn eglCreatePbufferSurface(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			config: EGLConfig,
 			attrib_list: *const Int,
 		) -> EGLSurface;
 		pub fn eglCreatePixmapSurface(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			config: EGLConfig,
 			pixmap: NativePixmapType,
 			attrib_list: *const Int,
 		) -> EGLSurface;
 		pub fn eglCreateWindowSurface(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			config: EGLConfig,
 			win: NativeWindowType,
 			attrib_list: *const Int,
 		) -> EGLSurface;
-		pub fn eglDestroyContext(dpy: EGLDisplay, ctx: EGLContext) -> Boolean;
-		pub fn eglDestroySurface(dpy: EGLDisplay, surface: EGLSurface) -> Boolean;
+		pub fn eglDestroyContext(display: EGLDisplay, ctx: EGLContext) -> Boolean;
+		pub fn eglDestroySurface(display: EGLDisplay, surface: EGLSurface) -> Boolean;
 		pub fn eglGetConfigAttrib(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			config: EGLConfig,
 			attribute: Int,
 			value: *mut Int,
 		) -> Boolean;
 		pub fn eglGetConfigs(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			configs: *mut EGLConfig,
 			config_size: Int,
 			num_config: *mut Int,
@@ -1376,47 +1386,47 @@ mod ffi {
 		pub fn eglGetDisplay(display_id: NativeDisplayType) -> EGLDisplay;
 		pub fn eglGetError() -> Int;
 		pub fn eglGetProcAddress(procname: *const c_char) -> extern "C" fn();
-		pub fn eglInitialize(dpy: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
+		pub fn eglInitialize(display: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
 		pub fn eglMakeCurrent(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			draw: EGLSurface,
 			read: EGLSurface,
 			ctx: EGLContext,
 		) -> Boolean;
 		pub fn eglQueryContext(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			ctx: EGLContext,
 			attribute: Int,
 			value: *mut Int,
 		) -> Boolean;
-		pub fn eglQueryString(dpy: EGLDisplay, name: Int) -> *const c_char;
+		pub fn eglQueryString(display: EGLDisplay, name: Int) -> *const c_char;
 		pub fn eglQuerySurface(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			surface: EGLSurface,
 			attribute: Int,
 			value: *mut Int,
 		) -> Boolean;
-		pub fn eglSwapBuffers(dpy: EGLDisplay, surface: EGLSurface) -> Boolean;
-		pub fn eglTerminate(dpy: EGLDisplay) -> Boolean;
+		pub fn eglSwapBuffers(display: EGLDisplay, surface: EGLSurface) -> Boolean;
+		pub fn eglTerminate(display: EGLDisplay) -> Boolean;
 		pub fn eglWaitGL() -> Boolean;
 		pub fn eglWaitNative(engine: Int) -> Boolean;
 
 		// EGL 1.1
-		pub fn eglBindTexImage(dpy: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
-		pub fn eglReleaseTexImage(dpy: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
+		pub fn eglBindTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
+		pub fn eglReleaseTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
 		pub fn eglSurfaceAttrib(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			surface: EGLSurface,
 			attribute: Int,
 			value: Int,
 		) -> Boolean;
-		pub fn eglSwapInterval(dpy: EGLDisplay, interval: Int) -> Boolean;
+		pub fn eglSwapInterval(display: EGLDisplay, interval: Int) -> Boolean;
 
 		// EGL 1.2
 		pub fn eglBindAPI(api: Enum) -> Boolean;
 		pub fn eglQueryAPI() -> Enum;
 		pub fn eglCreatePbufferFromClientBuffer(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			buftype: Enum,
 			buffer: EGLClientBuffer,
 			config: EGLConfig,
@@ -1429,40 +1439,40 @@ mod ffi {
 		pub fn eglGetCurrentContext() -> EGLContext;
 
 		// EGL 1.5
-		pub fn eglCreateSync(dpy: EGLDisplay, type_: Enum, attrib_list: *const Attrib) -> EGLSync;
-		pub fn eglDestroySync(dpy: EGLDisplay, sync: EGLSync) -> Boolean;
-		pub fn eglClientWaitSync(dpy: EGLDisplay, sync: EGLSync, flags: Int, timeout: Time) -> Int;
+		pub fn eglCreateSync(display: EGLDisplay, type_: Enum, attrib_list: *const Attrib) -> EGLSync;
+		pub fn eglDestroySync(display: EGLDisplay, sync: EGLSync) -> Boolean;
+		pub fn eglClientWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int, timeout: Time) -> Int;
 		pub fn eglGetSyncAttrib(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			sync: EGLSync,
 			attribute: Int,
 			value: *mut Attrib,
 		) -> Boolean;
 		pub fn eglCreateImage(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			ctx: EGLContext,
 			target: Enum,
 			buffer: EGLClientBuffer,
 			attrib_list: *const Attrib,
 		) -> EGLImage;
-		pub fn eglDestroyImage(dpy: EGLDisplay, image: EGLImage) -> Boolean;
+		pub fn eglDestroyImage(display: EGLDisplay, image: EGLImage) -> Boolean;
 		pub fn eglGetPlatformDisplay(
 			platform: Enum,
 			native_display: *mut c_void,
 			attrib_list: *const Attrib,
 		) -> EGLDisplay;
 		pub fn eglCreatePlatformWindowSurface(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			config: EGLConfig,
 			native_window: *mut c_void,
 			attrib_list: *const Attrib,
 		) -> EGLSurface;
 		pub fn eglCreatePlatformPixmapSurface(
-			dpy: EGLDisplay,
+			display: EGLDisplay,
 			config: EGLConfig,
 			native_pixmap: *mut c_void,
 			attrib_list: *const Attrib,
 		) -> EGLSurface;
-		pub fn eglWaitSync(dpy: EGLDisplay, sync: EGLSync, flags: Int) -> Boolean;
+		pub fn eglWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int) -> Boolean;
 	}
 }
