@@ -373,7 +373,7 @@ pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<us
 ///
 /// ```
 /// // Get the number of matching configurations.
-/// let count = egl::matching_config_count(attrib_list)?;
+/// let count = egl::matching_config_count(display, attrib_list)?;
 ///
 /// // Get the matching configurations.
 /// let mut configs = Vec::with_capacity(count);
