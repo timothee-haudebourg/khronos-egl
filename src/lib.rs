@@ -372,12 +372,21 @@ pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<us
 /// ## Example
 ///
 /// ```
+/// # extern crate khronos_egl as egl;
+/// # extern crate wayland_client;
+/// # fn main() -> Result<(), egl::Error> {
+/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+/// # egl::initialize(display)?;
+/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
 /// // Get the number of matching configurations.
-/// let count = egl::matching_config_count(attrib_list)?;
+/// let count = egl::matching_config_count(display, &attrib_list)?;
 ///
 /// // Get the matching configurations.
 /// let mut configs = Vec::with_capacity(count);
-/// egl::choose_config(display, attrib_list, &mut configs)?;
+/// egl::choose_config(display, &attrib_list, &mut configs)?;
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// This will return a `BadParameter` error if `attrib_list` is not a valid
@@ -414,9 +423,18 @@ pub fn choose_config(
 /// This is an helper function that will call `choose_config` with a buffer of
 /// size 1, which is equivalent to:
 /// ```
+/// # extern crate khronos_egl as egl;
+/// # extern crate wayland_client;
+/// # fn main() -> Result<(), egl::Error> {
+/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+/// # egl::initialize(display)?;
+/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
 /// let mut configs = Vec::with_capacity(1);
-/// egl::choose_config(display, attrib_list, &mut configs)?;
-/// configs.first()
+/// egl::choose_config(display, &attrib_list, &mut configs)?;
+/// configs.first();
+/// # Ok(())
+/// # }
 /// ```
 pub fn choose_first_config(display: Display, attrib_list: &[Int]) -> Result<Option<Config>, Error> {
 	let mut configs = Vec::with_capacity(1);
