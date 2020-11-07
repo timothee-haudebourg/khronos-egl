@@ -760,7 +760,7 @@ pub fn query_string(display: Option<Display>, name: Int) -> Result<&'static CStr
 	unsafe {
 		let display_ptr = match display {
 			Some(display) => display.as_ptr(),
-			None => std::ptr::null_mut()
+			None => NO_DISPLAY
 		};
 
 		let c_str = ffi::eglQueryString(display_ptr, name);
