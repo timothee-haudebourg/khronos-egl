@@ -756,9 +756,14 @@ pub fn query_context(display: Display, ctx: Context, attribute: Int) -> Result<I
 
 /// Return a string describing properties of the EGL client or of an EGL display
 /// connection.
-pub fn query_string(display: Display, name: Int) -> Result<&'static CStr, Error> {
+pub fn query_string(display: Option<Display>, name: Int) -> Result<&'static CStr, Error> {
 	unsafe {
-		let c_str = ffi::eglQueryString(display.as_ptr(), name);
+		let display_ptr = match display {
+			Some(display) => display.as_ptr(),
+			None => std::ptr::null_mut()
+		};
+
+		let c_str = ffi::eglQueryString(display_ptr, name);
 
 		if !c_str.is_null() {
 			Ok(CStr::from_ptr(c_str))
