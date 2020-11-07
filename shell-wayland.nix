@@ -5,5 +5,6 @@ pkgs.mkShell {
 		pkgs.gcc
 		pkgs.libGL
 		pkgs.pkg-config
+		pkgs.wayland
 	];
 }

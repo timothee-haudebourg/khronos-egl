@@ -48,6 +48,8 @@ you can get this pointer using the `Display::get_display_ptr` method.
 A `shell.nix` file is present for nix users to build the crate easily.
 Just enter a new nix shell using the given configuration file,
 and `cargo build` should work.
+If you want to run the tests and examples you will need to use `shell-wayland.nix` instead
+that will also load wayland since most of them depend on it.
 
 ## Troubleshooting
 
