@@ -1,6 +1,6 @@
 [package]
 name          = "khronos-egl"
-version       = "2.0.0"
+version       = "2.1.0"
 authors       = ["Timothée Haudebourg <author@haudebourg.net>", "Sean Kerr <sean@metatomic.io>"]
 license       = "MIT/Apache-2.0"
 description   = "Rust bindings for EGL"
@@ -11,14 +11,14 @@ keywords      = ["egl", "gl", "khronos", "opengl"]
 build         = "build.rs"
 
 [dependencies]
-khronos = "0.1.2"
-libc    = "0.2.60"
+khronos = "^0.1"
+libc    = "^0.2"
 
 [build-dependencies]
-pkg-config = "0.3.15"
+pkg-config = "^0.3"
 
 [dev-dependencies]
-gl = "0.11"
-wayland-client = { version = "0.25" }
-wayland-protocols = { version = "0.25", features = [ "client" ] }
-wayland-egl = { version = "0.25" }
+gl = "^0.11"
+wayland-client = { version = "^0.25" }
+wayland-protocols = { version = "^0.25", features = [ "client" ] }
+wayland-egl = { version = "^0.25" }
