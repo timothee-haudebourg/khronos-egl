@@ -1,21 +1,12 @@
 #![allow(non_upper_case_globals)]
 
-// -------------------------------------------------------------------------------------------------
-// DEPENDENCIES
-// -------------------------------------------------------------------------------------------------
-
-extern crate khronos;
 extern crate libc;
 
-// rust
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::fmt;
 use std::ptr;
-
-// system
-use khronos::{khronos_int32_t, khronos_utime_nanoseconds_t};
 
 use libc::{c_uint, c_void};
 
@@ -31,7 +22,7 @@ extern "C" {}
 // ------------------------------------------------------------------------------------------------
 
 pub type Boolean = c_uint;
-pub type Int = khronos_int32_t;
+pub type Int = i32;
 pub type EGLDisplay = *mut c_void;
 pub type EGLConfig = *mut c_void;
 pub type EGLContext = *mut c_void;
@@ -1113,7 +1104,7 @@ pub fn get_current_context() -> Option<Context> {
 // ------------------------------------------------------------------------------------------------
 
 pub type Attrib = usize;
-pub type Time = khronos_utime_nanoseconds_t;
+pub type Time = u64;
 pub type EGLSync = *mut c_void;
 pub type EGLImage = *mut c_void;
 
