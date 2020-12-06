@@ -605,7 +605,55 @@ pub fn get_config_attrib(display: Display, config: Config, attribute: Int) -> Re
 	}
 }
 
-/// Return a list of all EGL frame buffer configurations for a display.
+/// Return the number of all frame buffer configurations.
+/// 
+/// You can use it to setup the correct capacity for the configurations buffer in [`get_configs`].
+/// 
+/// ## Example
+/// ```
+/// # extern crate khronos_egl as egl;
+/// # extern crate wayland_client;
+/// # fn main() -> Result<(), egl::Error> {
+/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+/// # egl::initialize(display)?;
+/// let mut configs = Vec::with_capacity(egl::get_config_count(display)?);
+/// egl::get_configs(display, &mut configs);
+/// assert!(configs.len() > 0);
+/// # Ok(())
+/// # }
+/// ```
+pub fn get_config_count(display: Display) -> Result<usize, Error> {
+	unsafe {
+		let mut count = 0;
+
+		if ffi::eglGetConfigs(display.as_ptr(), std::ptr::null_mut(), 0, &mut count) == TRUE {
+			Ok(count as usize)
+		} else {
+			Err(get_error().unwrap())
+		}
+	}
+}
+
+/// Get the list of all EGL frame buffer configurations for a display.
+/// 
+/// The configurations are added to the `configs` buffer, up to the buffer's capacity.
+/// You can use [`get_config_count`] to get the total number of available frame buffer configurations,
+/// and setup the buffer's capacity accordingly.
+/// 
+/// ## Example
+/// ```
+/// # extern crate khronos_egl as egl;
+/// # extern crate wayland_client;
+/// # fn main() -> Result<(), egl::Error> {
+/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+/// # egl::initialize(display)?;
+/// let mut configs = Vec::with_capacity(egl::get_config_count(display)?);
+/// egl::get_configs(display, &mut configs);
+/// # Ok(())
+/// # }
+/// ```
 pub fn get_configs(display: Display, configs: &mut Vec<Config>) -> Result<(), Error> {
 	unsafe {
 		let capacity = configs.capacity();
