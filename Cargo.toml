@@ -15,7 +15,7 @@ khronos = "^0.1"
 libc    = "^0.2"
 
 [build-dependencies]
-pkg-config = "^0.3.15"
+pkg-config = "^0.3"
 
 [dev-dependencies]
 gl = "^0.14"
