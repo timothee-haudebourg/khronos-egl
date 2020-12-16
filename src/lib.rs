@@ -1,4 +1,110 @@
+//! This crate provides a binding for the Khronos EGL 1.5 API.
+//! It was originally a fork of the [egl](https://crates.io/crates/egl) crate,
+//! which is left unmaintained.
+//! 
+//! ## Usage
+//! 
+//! You can access the EGL API using an [`Instance`]
+//! object defined by either statically linking with `libEGL.so` at compile time,
+//! or dynamically loading the EGL library at runtime.
+//! 
+//! ### Static linking
+//! 
+//! You must enable static linking using the `static` feature in your `Cargo.toml`:
+//! ```toml
+//! khronos-egl = { version = ..., features = ["static"] }
+//! ```
+//! 
+//! This will add a dependency to the [`pkg-config`](https://crates.io/crates/pkg-config) crate,
+//! necessary to find the EGL library at compile time.
+//! Here is a simple example showing how to use this library to create an EGL context when static linking is enabled.
+//! 
+//! ```rust
+//! extern crate khronos_egl as egl;
+//! 
+//! fn main() -> Result<(), egl::Error> {
+//! 	// Create an EGL API instance.
+//! 	// The `egl::Static` API implementation is only available when the `static` feature is enabled.
+//! 	let egl = egl::Instance::new(egl::Static);
+//! 
+//! 	let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+//! 	let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+//! 	egl.initialize(display)?;
+//! 
+//! 	let attributes = [
+//! 		egl::RED_SIZE, 8,
+//! 		egl::GREEN_SIZE, 8,
+//! 		egl::BLUE_SIZE, 8,
+//! 		egl::NONE
+//! 	];
+//! 
+//! 	let config = egl.choose_first_config(display, &attributes)?.expect("unable to find an appropriate ELG configuration");
+//! 
+//! 	let context_attributes = [
+//! 		egl::CONTEXT_MAJOR_VERSION, 4,
+//! 		egl::CONTEXT_MINOR_VERSION, 0,
+//! 		egl::CONTEXT_OPENGL_PROFILE_MASK, egl::CONTEXT_OPENGL_CORE_PROFILE_BIT,
+//! 		egl::NONE
+//! 	];
+//! 
+//! 	egl.create_context(display, config, None, &context_attributes);
+//! 
+//! 	Ok(())
+//! }
+//! ```
+//! 
+//! The creation of a `Display` instance is not detailed here since it depends on your display server.
+//! It is created using the `get_display` function with a pointer to the display server connection handle.
+//! For instance, if you are using the [wayland-client](https://crates.io/crates/wayland-client) crate,
+//! you can get this pointer using the `Display::get_display_ptr` method.
+//! 
+//! #### Static API Instance
+//! 
+//! It may be bothering in some applications to pass the `Instance` to every fonction that needs to call the EGL API.
+//! One workaround would be to define a static `Instance`,
+//! which should be possible to define at compile time using static linking.
+//! However this is not yet supported by the stable `rustc` compiler.
+//! With the nightly compiler,
+//! you can combine the `nightly` and `static` features so that this crate
+//! can provide a static `Instance`, called `API` that can then be accessed everywhere.
+//! 
+//! ```ignore
+//! use egl::API as egl;
+//! ```
+//! 
+//! ### Dynamic Linking
+//! 
+//! You must enable dynamic linking using the `dynamic` feature in your `Cargo.toml`:
+//! ```toml
+//! khronos-egl = { version = ..., features = ["dynamic"] }
+//! ```
+//! 
+//! This will add a dependency to the [`libloading`](https://crates.io/crates/libloading) crate,
+//! necessary to find the EGL library at runtime.
+//! You can then load the EGL API into a `Instance<Dynamic<libloading::Library>>` as follows:
+//! 
+//! ```ignore
+//! let lib = libloading::Library::new("libEGL.so").expect("unable to find libEGL.so");
+//! let egl = unsafe { egl::Instance::from_lib(lib).expect("unable to load libEGL.so") };
+//! ```
+//! 
+//! ## Troubleshooting
+//! 
+//! ### Static Linking with OpenGL ES
+//! 
+//! When using OpenGL ES with `khronos-egl` with the `static` feature,
+//! it is necessary to place a dummy extern at the top of your application which links libEGL first, then GLESv1/2.
+//! This is because libEGL provides symbols required by GLESv1/2.
+//! Here's how to work around this:
+//! 
+//! ```
+//! ##[link(name = "EGL")]
+//! ##[link(name = "GLESv2")]
+//! extern {}
+//! ```
 #![allow(non_upper_case_globals)]
+#![allow(non_snake_case)]
+#![cfg_attr(feature = "nightly", feature(const_fn))]
 
 extern crate libc;
 
@@ -8,14 +114,13 @@ use std::ffi::CString;
 use std::fmt;
 use std::ptr;
 
-use libc::{c_uint, c_void};
+use libc::{c_uint, c_char, c_void};
 
-// -------------------------------------------------------------------------------------------------
-// LINKING
-// -------------------------------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------------------------------
+// Link
+// ------------------------------------------------------------------------------------------------
 #[link(name = "EGL")]
-extern "C" {}
+extern {}
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.0
@@ -325,545 +430,543 @@ pub fn check_attrib_list(attrib_list: &[Attrib]) -> Result<(), Error> {
 	}
 }
 
-/// Return the number of EGL frame buffer configurations that atch specified
-/// attributes.
-///
-/// This will call `eglChooseConfig` without `null` as `configs` to get the
-/// number of matching configurations.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `NONE`).
-pub fn matching_config_count(display: Display, attrib_list: &[Int]) -> Result<usize, Error> {
-	check_int_list(attrib_list)?;
-	unsafe {
-		let mut count = 0;
+/// EGL API instance.
+/// 
+/// An instance wraps an interface to the EGL API and provide
+/// rust-friendly access to it.
+pub struct Instance<T: Api> {
+	api: T
+}
 
-		if ffi::eglChooseConfig(
-			display.as_ptr(),
-			attrib_list.as_ptr(),
-			ptr::null_mut(),
-			0,
-			&mut count,
-		) == TRUE
-		{
-			Ok(count as usize)
-		} else {
-			Err(get_error().unwrap())
+impl<T: Api> Instance<T> {
+	#[cfg(feature="nightly")]
+	pub const fn new(api: T) -> Instance<T> {
+		Instance {
+			api
+		}
+	}
+
+	#[cfg(not(feature="nightly"))]
+	pub fn new(api: T) -> Instance<T> {
+		Instance {
+			api
 		}
 	}
 }
 
-/// Return a list of EGL frame buffer configurations that match specified
-/// attributes.
-///
-/// This will write as many matching configurations in `configs` up to its
-/// capacity. You can use the function [`matching_config_count`] to get the
-/// exact number of configurations matching the specified attributes.
-///
-/// ## Example
-///
-/// ```
-/// # extern crate khronos_egl as egl;
-/// # extern crate wayland_client;
-/// # fn main() -> Result<(), egl::Error> {
-/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
-/// # egl::initialize(display)?;
-/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
-/// // Get the number of matching configurations.
-/// let count = egl::matching_config_count(display, &attrib_list)?;
-///
-/// // Get the matching configurations.
-/// let mut configs = Vec::with_capacity(count);
-/// egl::choose_config(display, &attrib_list, &mut configs)?;
-/// # Ok(())
-/// # }
-/// ```
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `NONE`).
-pub fn choose_config(
-	display: Display,
-	attrib_list: &[Int],
-	configs: &mut Vec<Config>,
-) -> Result<(), Error> {
-	check_int_list(attrib_list)?;
-	unsafe {
-		let capacity = configs.capacity();
-		let mut count = 0;
+impl<T: Api> Instance<T> {
+	/// Return the number of EGL frame buffer configurations that atch specified
+	/// attributes.
+	///
+	/// This will call `eglChooseConfig` without `null` as `configs` to get the
+	/// number of matching configurations.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `NONE`).
+	pub fn matching_config_count(&self, display: Display, attrib_list: &[Int]) -> Result<usize, Error> {
+		check_int_list(attrib_list)?;
+		unsafe {
+			let mut count = 0;
 
-		if ffi::eglChooseConfig(
-			display.as_ptr(),
-			attrib_list.as_ptr(),
-			configs.as_mut_ptr() as *mut EGLConfig,
-			capacity.try_into().unwrap(),
-			&mut count,
-		) == TRUE
-		{
-			configs.set_len(count as usize);
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+			if self.api.eglChooseConfig(
+				display.as_ptr(),
+				attrib_list.as_ptr(),
+				ptr::null_mut(),
+				0,
+				&mut count,
+			) == TRUE
+			{
+				Ok(count as usize)
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Return the first EGL frame buffer configuration that match specified
-/// attributes.
-///
-/// This is an helper function that will call `choose_config` with a buffer of
-/// size 1, which is equivalent to:
-/// ```
-/// # extern crate khronos_egl as egl;
-/// # extern crate wayland_client;
-/// # fn main() -> Result<(), egl::Error> {
-/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
-/// # egl::initialize(display)?;
-/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
-/// let mut configs = Vec::with_capacity(1);
-/// egl::choose_config(display, &attrib_list, &mut configs)?;
-/// configs.first();
-/// # Ok(())
-/// # }
-/// ```
-pub fn choose_first_config(display: Display, attrib_list: &[Int]) -> Result<Option<Config>, Error> {
-	let mut configs = Vec::with_capacity(1);
-	choose_config(display, attrib_list, &mut configs)?;
-	Ok(configs.first().map(|config| *config))
-}
+	/// Return a list of EGL frame buffer configurations that match specified
+	/// attributes.
+	///
+	/// This will write as many matching configurations in `configs` up to its
+	/// capacity. You can use the function [`matching_config_count`](Self::matching_config_count) to get the
+	/// exact number of configurations matching the specified attributes.
+	///
+	/// ## Example
+	///
+	/// ```
+	/// # extern crate khronos_egl as egl;
+	/// # extern crate wayland_client;
+	/// # fn main() -> Result<(), egl::Error> {
+	/// # let egl = egl::Instance::new(egl::Static);
+	/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+	/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+	/// # egl.initialize(display)?;
+	/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
+	/// // Get the number of matching configurations.
+	/// let count = egl.matching_config_count(display, &attrib_list)?;
+	///
+	/// // Get the matching configurations.
+	/// let mut configs = Vec::with_capacity(count);
+	/// egl.choose_config(display, &attrib_list, &mut configs)?;
+	/// # Ok(())
+	/// # }
+	/// ```
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `NONE`).
+	pub fn choose_config(&self, display: Display, attrib_list: &[Int], configs: &mut Vec<Config>) -> Result<(), Error> {
+		check_int_list(attrib_list)?;
+		unsafe {
+			let capacity = configs.capacity();
+			let mut count = 0;
 
-/// Copy EGL surface color buffer to a native pixmap.
-pub fn copy_buffers(
-	display: Display,
-	surface: Surface,
-	target: NativePixmapType,
-) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglCopyBuffers(display.as_ptr(), surface.as_ptr(), target) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+			if self.api.eglChooseConfig(
+				display.as_ptr(),
+				attrib_list.as_ptr(),
+				configs.as_mut_ptr() as *mut EGLConfig,
+				capacity.try_into().unwrap(),
+				&mut count,
+			) == TRUE
+			{
+				configs.set_len(count as usize);
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Create a new EGL rendering context.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `NONE`).
-pub fn create_context(
-	display: Display,
-	config: Config,
-	share_context: Option<Context>,
-	attrib_list: &[Int],
-) -> Result<Context, Error> {
-	check_int_list(attrib_list)?;
-	unsafe {
-		let share_context = match share_context {
-			Some(share_context) => share_context.as_ptr(),
-			None => NO_CONTEXT,
-		};
+	/// Return the first EGL frame buffer configuration that match specified
+	/// attributes.
+	///
+	/// This is an helper function that will call `choose_config` with a buffer of
+	/// size 1, which is equivalent to:
+	/// ```
+	/// # extern crate khronos_egl as egl;
+	/// # extern crate wayland_client;
+	/// # fn main() -> Result<(), egl::Error> {
+	/// # let egl = egl::Instance::new(egl::Static);
+	/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+	/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+	/// # egl.initialize(display)?;
+	/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
+	/// let mut configs = Vec::with_capacity(1);
+	/// egl.choose_config(display, &attrib_list, &mut configs)?;
+	/// configs.first();
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub fn choose_first_config(&self, display: Display, attrib_list: &[Int]) -> Result<Option<Config>, Error> {
+		let mut configs = Vec::with_capacity(1);
+		self.choose_config(display, attrib_list, &mut configs)?;
+		Ok(configs.first().map(|config| *config))
+	}
 
-		let context = ffi::eglCreateContext(
+	/// Copy EGL surface color buffer to a native pixmap.
+	pub fn copy_buffers(&self, display: Display, surface: Surface, target: NativePixmapType) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglCopyBuffers(display.as_ptr(), surface.as_ptr(), target) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Create a new EGL rendering context.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `NONE`).
+	pub fn create_context(&self, display: Display, config: Config, share_context: Option<Context>, attrib_list: &[Int]) -> Result<Context, Error> {
+		check_int_list(attrib_list)?;
+		unsafe {
+			let share_context = match share_context {
+				Some(share_context) => share_context.as_ptr(),
+				None => NO_CONTEXT,
+			};
+
+			let context = self.api.eglCreateContext(
+				display.as_ptr(),
+				config.as_ptr(),
+				share_context,
+				attrib_list.as_ptr(),
+			);
+
+			if context != NO_CONTEXT {
+				Ok(Context(context))
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Create a new EGL pixel buffer surface.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `NONE`).
+	pub fn create_pbuffer_surface(&self, display: Display, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
+		check_int_list(attrib_list)?;
+		unsafe {
+			let surface =
+				self.api.eglCreatePbufferSurface(display.as_ptr(), config.as_ptr(), attrib_list.as_ptr());
+
+			if surface != NO_SURFACE {
+				Ok(Surface(surface))
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Create a new EGL offscreen surface.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `NONE`).
+	///
+	/// Since this function may raise undefined behavior if the display and native
+	/// pixmap do not belong to the same platform, it is inherently unsafe.
+	pub unsafe fn create_pixmap_surface(&self, display: Display, config: Config, pixmap: NativePixmapType, attrib_list: &[Int]) -> Result<Surface, Error> {
+		check_int_list(attrib_list)?;
+		let surface = self.api.eglCreatePixmapSurface(
 			display.as_ptr(),
 			config.as_ptr(),
-			share_context,
+			pixmap,
 			attrib_list.as_ptr(),
 		);
-
-		if context != NO_CONTEXT {
-			Ok(Context(context))
-		} else {
-			Err(get_error().unwrap())
-		}
-	}
-}
-
-/// Create a new EGL pixel buffer surface.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `NONE`).
-pub fn create_pbuffer_surface(
-	display: Display,
-	config: Config,
-	attrib_list: &[Int],
-) -> Result<Surface, Error> {
-	check_int_list(attrib_list)?;
-	unsafe {
-		let surface =
-			ffi::eglCreatePbufferSurface(display.as_ptr(), config.as_ptr(), attrib_list.as_ptr());
 
 		if surface != NO_SURFACE {
 			Ok(Surface(surface))
 		} else {
-			Err(get_error().unwrap())
+			Err(self.get_error().unwrap())
 		}
 	}
-}
 
-/// Create a new EGL offscreen surface.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `NONE`).
-///
-/// Since this function may raise undefined behavior if the display and native
-/// pixmap do not belong to the same platform, it is inherently unsafe.
-pub unsafe fn create_pixmap_surface(
-	display: Display,
-	config: Config,
-	pixmap: NativePixmapType,
-	attrib_list: &[Int],
-) -> Result<Surface, Error> {
-	check_int_list(attrib_list)?;
-	let surface = ffi::eglCreatePixmapSurface(
-		display.as_ptr(),
-		config.as_ptr(),
-		pixmap,
-		attrib_list.as_ptr(),
-	);
+	/// Create a new EGL window surface.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `NONE`).
+	///
+	/// Since this function may raise undefined behavior if the display and native
+	/// window do not belong to the same platform, it is inherently unsafe.
+	pub unsafe fn create_window_surface(&self, display: Display, config: Config, window: NativeWindowType, attrib_list: Option<&[Int]>) -> Result<Surface, Error> {
+		let attrib_list = match attrib_list {
+			Some(attrib_list) => {
+				check_int_list(attrib_list)?;
+				attrib_list.as_ptr()
+			}
+			None => ptr::null(),
+		};
 
-	if surface != NO_SURFACE {
-		Ok(Surface(surface))
-	} else {
-		Err(get_error().unwrap())
-	}
-}
-
-/// Create a new EGL window surface.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `NONE`).
-///
-/// Since this function may raise undefined behavior if the display and native
-/// window do not belong to the same platform, it is inherently unsafe.
-pub unsafe fn create_window_surface(
-	display: Display,
-	config: Config,
-	window: NativeWindowType,
-	attrib_list: Option<&[Int]>,
-) -> Result<Surface, Error> {
-	let attrib_list = match attrib_list {
-		Some(attrib_list) => {
-			check_int_list(attrib_list)?;
-			attrib_list.as_ptr()
-		}
-		None => ptr::null(),
-	};
-
-	let surface =
-		ffi::eglCreateWindowSurface(display.as_ptr(), config.as_ptr(), window, attrib_list);
-
-	if surface != NO_SURFACE {
-		Ok(Surface(surface))
-	} else {
-		Err(get_error().unwrap())
-	}
-}
-
-/// Destroy an EGL rendering context.
-pub fn destroy_context(display: Display, ctx: Context) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglDestroyContext(display.as_ptr(), ctx.as_ptr()) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
-		}
-	}
-}
-
-/// Destroy an EGL surface.
-pub fn destroy_surface(display: Display, surface: Surface) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglDestroySurface(display.as_ptr(), surface.as_ptr()) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
-		}
-	}
-}
-
-/// Return information about an EGL frame buffer configuration.
-pub fn get_config_attrib(display: Display, config: Config, attribute: Int) -> Result<Int, Error> {
-	unsafe {
-		let mut value: Int = 0;
-		if ffi::eglGetConfigAttrib(display.as_ptr(), config.as_ptr(), attribute, &mut value) == TRUE
-		{
-			Ok(value)
-		} else {
-			Err(get_error().unwrap())
-		}
-	}
-}
-
-/// Return the number of all frame buffer configurations.
-/// 
-/// You can use it to setup the correct capacity for the configurations buffer in [`get_configs`].
-/// 
-/// ## Example
-/// ```
-/// # extern crate khronos_egl as egl;
-/// # extern crate wayland_client;
-/// # fn main() -> Result<(), egl::Error> {
-/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
-/// # egl::initialize(display)?;
-/// let mut configs = Vec::with_capacity(egl::get_config_count(display)?);
-/// egl::get_configs(display, &mut configs);
-/// assert!(configs.len() > 0);
-/// # Ok(())
-/// # }
-/// ```
-pub fn get_config_count(display: Display) -> Result<usize, Error> {
-	unsafe {
-		let mut count = 0;
-
-		if ffi::eglGetConfigs(display.as_ptr(), std::ptr::null_mut(), 0, &mut count) == TRUE {
-			Ok(count as usize)
-		} else {
-			Err(get_error().unwrap())
-		}
-	}
-}
-
-/// Get the list of all EGL frame buffer configurations for a display.
-/// 
-/// The configurations are added to the `configs` buffer, up to the buffer's capacity.
-/// You can use [`get_config_count`] to get the total number of available frame buffer configurations,
-/// and setup the buffer's capacity accordingly.
-/// 
-/// ## Example
-/// ```
-/// # extern crate khronos_egl as egl;
-/// # extern crate wayland_client;
-/// # fn main() -> Result<(), egl::Error> {
-/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-/// # let display = egl::get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
-/// # egl::initialize(display)?;
-/// let mut configs = Vec::with_capacity(egl::get_config_count(display)?);
-/// egl::get_configs(display, &mut configs);
-/// # Ok(())
-/// # }
-/// ```
-pub fn get_configs(display: Display, configs: &mut Vec<Config>) -> Result<(), Error> {
-	unsafe {
-		let capacity = configs.capacity();
-		let mut count = 0;
-
-		if ffi::eglGetConfigs(
-			display.as_ptr(),
-			configs.as_mut_ptr() as *mut EGLConfig,
-			capacity.try_into().unwrap(),
-			&mut count,
-		) == TRUE
-		{
-			configs.set_len(count as usize);
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
-		}
-	}
-}
-
-/// Return the display for the current EGL rendering context.
-pub fn get_current_display() -> Option<Display> {
-	unsafe {
-		let display = ffi::eglGetCurrentDisplay();
-
-		if display != NO_DISPLAY {
-			Some(Display(display))
-		} else {
-			None
-		}
-	}
-}
-
-/// Return the read or draw surface for the current EGL rendering context.
-pub fn get_current_surface(readdraw: Int) -> Option<Surface> {
-	unsafe {
-		let surface = ffi::eglGetCurrentSurface(readdraw);
+		let surface =
+			self.api.eglCreateWindowSurface(display.as_ptr(), config.as_ptr(), window, attrib_list);
 
 		if surface != NO_SURFACE {
-			Some(Surface(surface))
+			Ok(Surface(surface))
 		} else {
-			None
+			Err(self.get_error().unwrap())
 		}
 	}
-}
 
-/// Return an EGL display connection.
-pub fn get_display(display_id: NativeDisplayType) -> Option<Display> {
-	unsafe {
-		let display = ffi::eglGetDisplay(display_id);
-
-		if display != NO_DISPLAY {
-			Some(Display(display))
-		} else {
-			None
+	/// Destroy an EGL rendering context.
+	pub fn destroy_context(&self, display: Display, ctx: Context) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglDestroyContext(display.as_ptr(), ctx.as_ptr()) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Return error information.
-///
-/// Return the error of the last called EGL function in the current thread, or
-/// `None` if the error is set to `SUCCESS`.
-///
-/// Note that since a call to `eglGetError` sets the error to `SUCCESS`, and
-/// since this function is automatically called by any wrapper function
-/// returning a `Result` when necessary, this function may only return `None`
-/// from the point of view of a user.
-pub fn get_error() -> Option<Error> {
-	unsafe {
-		let e = ffi::eglGetError();
-		if e == SUCCESS {
-			None
-		} else {
-			Some(e.try_into().unwrap())
+	/// Destroy an EGL surface.
+	pub fn destroy_surface(&self, display: Display, surface: Surface) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglDestroySurface(display.as_ptr(), surface.as_ptr()) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Return a GL or an EGL extension function.
-pub fn get_proc_address(procname: &str) -> Option<extern "C" fn()> {
-	unsafe {
-		let string = CString::new(procname).unwrap();
-
-		let addr = ffi::eglGetProcAddress(string.as_ptr());
-		if !(addr as *const ()).is_null() {
-			Some(addr)
-		} else {
-			None
+	/// Return information about an EGL frame buffer configuration.
+	pub fn get_config_attrib(&self, display: Display, config: Config, attribute: Int) -> Result<Int, Error> {
+		unsafe {
+			let mut value: Int = 0;
+			if self.api.eglGetConfigAttrib(display.as_ptr(), config.as_ptr(), attribute, &mut value) == TRUE
+			{
+				Ok(value)
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Initialize an EGL display connection.
-pub fn initialize(display: Display) -> Result<(Int, Int), Error> {
-	unsafe {
-		let mut major = 0;
-		let mut minor = 0;
+	/// Return the number of all frame buffer configurations.
+	/// 
+	/// You can use it to setup the correct capacity for the configurations buffer in [`get_configs`](Self::get_configs).
+	/// 
+	/// ## Example
+	/// ```
+	/// # extern crate khronos_egl as egl;
+	/// # extern crate wayland_client;
+	/// # fn main() -> Result<(), egl::Error> {
+	/// # let egl = egl::Instance::new(egl::Static);
+	/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+	/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+	/// # egl.initialize(display)?;
+	/// let mut configs = Vec::with_capacity(egl.get_config_count(display)?);
+	/// egl.get_configs(display, &mut configs);
+	/// assert!(configs.len() > 0);
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub fn get_config_count(&self, display: Display) -> Result<usize, Error> {
+		unsafe {
+			let mut count = 0;
 
-		if ffi::eglInitialize(display.as_ptr(), &mut major, &mut minor) == TRUE {
-			Ok((major, minor))
-		} else {
-			Err(get_error().unwrap())
+			if self.api.eglGetConfigs(display.as_ptr(), std::ptr::null_mut(), 0, &mut count) == TRUE {
+				Ok(count as usize)
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Attach an EGL rendering context to EGL surfaces.
-pub fn make_current(
-	display: Display,
-	draw: Option<Surface>,
-	read: Option<Surface>,
-	ctx: Option<Context>,
-) -> Result<(), Error> {
-	unsafe {
-		let draw = match draw {
-			Some(draw) => draw.as_ptr(),
-			None => NO_SURFACE,
-		};
-		let read = match read {
-			Some(read) => read.as_ptr(),
-			None => NO_SURFACE,
-		};
-		let ctx = match ctx {
-			Some(ctx) => ctx.as_ptr(),
-			None => NO_CONTEXT,
-		};
+	/// Get the list of all EGL frame buffer configurations for a display.
+	/// 
+	/// The configurations are added to the `configs` buffer, up to the buffer's capacity.
+	/// You can use [`get_config_count`](Self::get_config_count) to get the total number of available frame buffer configurations,
+	/// and setup the buffer's capacity accordingly.
+	/// 
+	/// ## Example
+	/// ```
+	/// # extern crate khronos_egl as egl;
+	/// # extern crate wayland_client;
+	/// # fn main() -> Result<(), egl::Error> {
+	/// # let egl = egl::Instance::new(egl::Static);
+	/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
+	/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+	/// # egl.initialize(display)?;
+	/// let mut configs = Vec::with_capacity(egl.get_config_count(display)?);
+	/// egl.get_configs(display, &mut configs);
+	/// # Ok(())
+	/// # }
+	/// ```
+	pub fn get_configs(&self, display: Display, configs: &mut Vec<Config>) -> Result<(), Error> {
+		unsafe {
+			let capacity = configs.capacity();
+			let mut count = 0;
 
-		if ffi::eglMakeCurrent(display.as_ptr(), draw, read, ctx) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+			if self.api.eglGetConfigs(
+				display.as_ptr(),
+				configs.as_mut_ptr() as *mut EGLConfig,
+				capacity.try_into().unwrap(),
+				&mut count,
+			) == TRUE
+			{
+				configs.set_len(count as usize);
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Return EGL rendering context information.
-pub fn query_context(display: Display, ctx: Context, attribute: Int) -> Result<Int, Error> {
-	unsafe {
-		let mut value = 0;
-		if ffi::eglQueryContext(display.as_ptr(), ctx.as_ptr(), attribute, &mut value) == TRUE {
-			Ok(value)
-		} else {
-			Err(get_error().unwrap())
+	/// Return the display for the current EGL rendering context.
+	pub fn get_current_display(&self) -> Option<Display> {
+		unsafe {
+			let display = self.api.eglGetCurrentDisplay();
+
+			if display != NO_DISPLAY {
+				Some(Display(display))
+			} else {
+				None
+			}
 		}
 	}
-}
 
-/// Return a string describing properties of the EGL client or of an EGL display
-/// connection.
-pub fn query_string(display: Option<Display>, name: Int) -> Result<&'static CStr, Error> {
-	unsafe {
-		let display_ptr = match display {
-			Some(display) => display.as_ptr(),
-			None => NO_DISPLAY
-		};
+	/// Return the read or draw surface for the current EGL rendering context.
+	pub fn get_current_surface(&self, readdraw: Int) -> Option<Surface> {
+		unsafe {
+			let surface = self.api.eglGetCurrentSurface(readdraw);
 
-		let c_str = ffi::eglQueryString(display_ptr, name);
-
-		if !c_str.is_null() {
-			Ok(CStr::from_ptr(c_str))
-		} else {
-			Err(get_error().unwrap())
+			if surface != NO_SURFACE {
+				Some(Surface(surface))
+			} else {
+				None
+			}
 		}
 	}
-}
 
-/// Return EGL surface information.
-pub fn query_surface(display: Display, surface: Surface, attribute: Int) -> Result<Int, Error> {
-	unsafe {
-		let mut value = 0;
-		if ffi::eglQuerySurface(display.as_ptr(), surface.as_ptr(), attribute, &mut value) == TRUE {
-			Ok(value)
-		} else {
-			Err(get_error().unwrap())
+	/// Return an EGL display connection.
+	pub fn get_display(&self, display_id: NativeDisplayType) -> Option<Display> {
+		unsafe {
+			let display = self.api.eglGetDisplay(display_id);
+
+			if display != NO_DISPLAY {
+				Some(Display(display))
+			} else {
+				None
+			}
 		}
 	}
-}
 
-/// Post EGL surface color buffer to a native window.
-pub fn swap_buffers(display: Display, surface: Surface) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglSwapBuffers(display.as_ptr(), surface.as_ptr()) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Return error information.
+	///
+	/// Return the error of the last called EGL function in the current thread, or
+	/// `None` if the error is set to `SUCCESS`.
+	///
+	/// Note that since a call to `eglGetError` sets the error to `SUCCESS`, and
+	/// since this function is automatically called by any wrapper function
+	/// returning a `Result` when necessary, this function may only return `None`
+	/// from the point of view of a user.
+	pub fn get_error(&self) -> Option<Error> {
+		unsafe {
+			let e = self.api.eglGetError();
+			if e == SUCCESS {
+				None
+			} else {
+				Some(e.try_into().unwrap())
+			}
 		}
 	}
-}
 
-/// Terminate an EGL display connection.
-pub fn terminate(display: Display) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglTerminate(display.as_ptr()) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Return a GL or an EGL extension function.
+	pub fn get_proc_address(&self, procname: &str) -> Option<extern "C" fn()> {
+		unsafe {
+			let string = CString::new(procname).unwrap();
+
+			let addr = self.api.eglGetProcAddress(string.as_ptr());
+			if !(addr as *const ()).is_null() {
+				Some(addr)
+			} else {
+				None
+			}
 		}
 	}
-}
 
-/// Complete GL execution prior to subsequent native rendering calls.
-pub fn wait_gl() -> Result<(), Error> {
-	unsafe {
-		if ffi::eglWaitGL() == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Initialize an EGL display connection.
+	pub fn initialize(&self, display: Display) -> Result<(Int, Int), Error> {
+		unsafe {
+			let mut major = 0;
+			let mut minor = 0;
+
+			if self.api.eglInitialize(display.as_ptr(), &mut major, &mut minor) == TRUE {
+				Ok((major, minor))
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Complete native execution prior to subsequent GL rendering calls.
-pub fn wait_native(engine: Int) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglWaitNative(engine) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Attach an EGL rendering context to EGL surfaces.
+	pub fn make_current(&self, display: Display, draw: Option<Surface>, read: Option<Surface>, ctx: Option<Context>) -> Result<(), Error> {
+		unsafe {
+			let draw = match draw {
+				Some(draw) => draw.as_ptr(),
+				None => NO_SURFACE,
+			};
+			let read = match read {
+				Some(read) => read.as_ptr(),
+				None => NO_SURFACE,
+			};
+			let ctx = match ctx {
+				Some(ctx) => ctx.as_ptr(),
+				None => NO_CONTEXT,
+			};
+
+			if self.api.eglMakeCurrent(display.as_ptr(), draw, read, ctx) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Return EGL rendering context information.
+	pub fn query_context(&self, display: Display, ctx: Context, attribute: Int) -> Result<Int, Error> {
+		unsafe {
+			let mut value = 0;
+			if self.api.eglQueryContext(display.as_ptr(), ctx.as_ptr(), attribute, &mut value) == TRUE {
+				Ok(value)
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Return a string describing properties of the EGL client or of an EGL display
+	/// connection.
+	pub fn query_string(&self, display: Option<Display>, name: Int) -> Result<&'static CStr, Error> {
+		unsafe {
+			let display_ptr = match display {
+				Some(display) => display.as_ptr(),
+				None => NO_DISPLAY
+			};
+
+			let c_str = self.api.eglQueryString(display_ptr, name);
+
+			if !c_str.is_null() {
+				Ok(CStr::from_ptr(c_str))
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Return EGL surface information.
+	pub fn query_surface(&self, display: Display, surface: Surface, attribute: Int) -> Result<Int, Error> {
+		unsafe {
+			let mut value = 0;
+			if self.api.eglQuerySurface(display.as_ptr(), surface.as_ptr(), attribute, &mut value) == TRUE {
+				Ok(value)
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Post EGL surface color buffer to a native window.
+	pub fn swap_buffers(&self, display: Display, surface: Surface) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglSwapBuffers(display.as_ptr(), surface.as_ptr()) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Terminate an EGL display connection.
+	pub fn terminate(&self, display: Display) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglTerminate(display.as_ptr()) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Complete GL execution prior to subsequent native rendering calls.
+	pub fn wait_gl(&self) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglWaitGL() == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Complete native execution prior to subsequent GL rendering calls.
+	pub fn wait_native(&self, engine: Int) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglWaitNative(engine) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
 }
@@ -887,52 +990,49 @@ pub const TEXTURE_RGB: Int = 0x305D;
 pub const TEXTURE_RGBA: Int = 0x305E;
 pub const TEXTURE_TARGET: Int = 0x3081;
 
-/// Defines a two-dimensional texture image.
-pub fn bind_tex_image(display: Display, surface: Surface, buffer: Int) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglBindTexImage(display.as_ptr(), surface.as_ptr(), buffer) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+impl<T: Api> Instance<T> {
+	/// Defines a two-dimensional texture image.
+	pub fn bind_tex_image(&self, display: Display, surface: Surface, buffer: Int) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglBindTexImage(display.as_ptr(), surface.as_ptr(), buffer) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-///  Releases a color buffer that is being used as a texture.
-pub fn release_tex_image(display: Display, surface: Surface, buffer: Int) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglReleaseTexImage(display.as_ptr(), surface.as_ptr(), buffer) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	///  Releases a color buffer that is being used as a texture.
+	pub fn release_tex_image(&self, display: Display, surface: Surface, buffer: Int) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglReleaseTexImage(display.as_ptr(), surface.as_ptr(), buffer) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Set an EGL surface attribute.
-pub fn surface_attrib(
-	display: Display,
-	surface: Surface,
-	attribute: Int,
-	value: Int,
-) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglSurfaceAttrib(display.as_ptr(), surface.as_ptr(), attribute, value) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Set an EGL surface attribute.
+	pub fn surface_attrib(&self, display: Display, surface: Surface, attribute: Int, value: Int) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglSurfaceAttrib(display.as_ptr(), surface.as_ptr(), attribute, value) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Specifies the minimum number of video frame periods per buffer swap for the
-/// window associated with the current context.
-pub fn swap_interval(display: Display, interval: Int) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglSwapInterval(display.as_ptr(), interval) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Specifies the minimum number of video frame periods per buffer swap for the
+	/// window associated with the current context.
+	pub fn swap_interval(&self, display: Display, interval: Int) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglSwapInterval(display.as_ptr(), interval) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
 }
@@ -989,69 +1089,65 @@ pub const SWAP_BEHAVIOR: Int = 0x3093;
 pub const UNKNOWN: Int = -1;
 pub const VERTICAL_RESOLUTION: Int = 0x3091;
 
-/// Set the current rendering API.
-pub fn bind_api(api: Enum) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglBindAPI(api) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+impl<T: Api> Instance<T> {
+	/// Set the current rendering API.
+	pub fn bind_api(&self, api: Enum) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglBindAPI(api) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Query the current rendering API.
-pub fn query_api() -> Enum {
-	unsafe { ffi::eglQueryAPI() }
-}
+	/// Query the current rendering API.
+	pub fn query_api(&self) -> Enum {
+		unsafe { self.api.eglQueryAPI() }
+	}
 
-/// Create a new EGL pixel buffer surface bound to an OpenVG image.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `NONE`).
-pub fn create_pbuffer_from_client_buffer(
-	display: Display,
-	buffer_type: Enum,
-	buffer: ClientBuffer,
-	config: Config,
-	attrib_list: &[Int],
-) -> Result<Surface, Error> {
-	check_int_list(attrib_list)?;
-	unsafe {
-		let surface = ffi::eglCreatePbufferFromClientBuffer(
-			display.as_ptr(),
-			buffer_type,
-			buffer.as_ptr(),
-			config.as_ptr(),
-			attrib_list.as_ptr(),
-		);
+	/// Create a new EGL pixel buffer surface bound to an OpenVG image.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `NONE`).
+	pub fn create_pbuffer_from_client_buffer(&self, display: Display, buffer_type: Enum, buffer: ClientBuffer, config: Config, attrib_list: &[Int]) -> Result<Surface, Error> {
+		check_int_list(attrib_list)?;
+		unsafe {
+			let surface = self.api.eglCreatePbufferFromClientBuffer(
+				display.as_ptr(),
+				buffer_type,
+				buffer.as_ptr(),
+				config.as_ptr(),
+				attrib_list.as_ptr(),
+			);
 
-		if surface != NO_SURFACE {
-			Ok(Surface(surface))
-		} else {
-			Err(get_error().unwrap())
+			if surface != NO_SURFACE {
+				Ok(Surface(surface))
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Release EGL per-thread state.
-pub fn release_thread() -> Result<(), Error> {
-	unsafe {
-		if ffi::eglReleaseThread() == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Release EGL per-thread state.
+	pub fn release_thread(&self) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglReleaseThread() == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Complete client API execution prior to subsequent native rendering calls.
-pub fn wait_client() -> Result<(), Error> {
-	unsafe {
-		if ffi::eglWaitClient() == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Complete client API execution prior to subsequent native rendering calls.
+	pub fn wait_client(&self) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglWaitClient() == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
 }
@@ -1086,15 +1182,17 @@ pub const OPENGL_API: Enum = 0x30A2;
 pub const OPENGL_BIT: Int = 0x0008;
 pub const SWAP_BEHAVIOR_PRESERVED_BIT: Int = 0x0400;
 
-/// Return the current EGL rendering context.
-pub fn get_current_context() -> Option<Context> {
-	unsafe {
-		let context = ffi::eglGetCurrentContext();
+impl<T: Api> Instance<T> {
+	/// Return the current EGL rendering context.
+	pub fn get_current_context(&self) -> Option<Context> {
+		unsafe {
+			let context = self.api.eglGetCurrentContext();
 
-		if context != NO_CONTEXT {
-			Some(Context(context))
-		} else {
-			None
+			if context != NO_CONTEXT {
+				Some(Context(context))
+			} else {
+				None
+			}
 		}
 	}
 }
@@ -1182,204 +1280,186 @@ pub const GL_TEXTURE_CUBE_MAP_NEGATIVE_Z: Int = 0x30B8;
 pub const IMAGE_PRESERVED: Int = 0x30D2;
 pub const NO_IMAGE: EGLImage = 0 as EGLImage;
 
-/// Create a new EGL sync object.
-///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
-/// instead of `NONE` to terminate the attribute list.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `ATTRIB_NONE`).
-///
-/// This function is unsafe: when creating an OpenCL Event Sync Object, passing an invalid event
-/// handle in `attrib_list` may result in undefined behavior up to and including program
-/// termination.
-pub unsafe fn create_sync(display: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
-	check_attrib_list(attrib_list)?;
-	let sync = ffi::eglCreateSync(display.as_ptr(), ty, attrib_list.as_ptr());
-	if sync != NO_SYNC {
-		Ok(Sync(sync))
-	} else {
-		Err(get_error().unwrap())
-	}
-}
-
-/// Destroy a sync object.
-///
-/// This function is unsafe: if display does not match the display passed to eglCreateSync when
-/// sync was created, the behaviour is undefined.
-pub unsafe fn destroy_sync(display: Display, sync: Sync) -> Result<(), Error> {
-	if ffi::eglDestroySync(display.as_ptr(), sync.as_ptr()) == TRUE {
-		Ok(())
-	} else {
-		Err(get_error().unwrap())
-	}
-}
-
-/// Wait in the client for a sync object to be signalled.
-///
-/// This function is unsafe: if `display` does not match the [`Display`] passed to [`create_sync`]
-/// when `sync` was created, the behaviour is undefined.
-pub unsafe fn client_wait_sync(display: Display, sync: Sync, flags: Int, timeout: Time) -> Result<Int, Error> {
-	let status = ffi::eglClientWaitSync(display.as_ptr(), sync.as_ptr(), flags, timeout);
-	if status != FALSE as Int {
-		Ok(status)
-	} else {
-		Err(get_error().unwrap())
-	}
-}
-
-/// Return an attribute of a sync object.
-///
-/// This function is unsafe: If `display` does not match the [`Display`] passed to [`create_sync`]
-/// when `sync` was created, behaviour is undefined.
-pub unsafe fn get_sync_attrib(display: Display, sync: Sync, attribute: Int) -> Result<Attrib, Error> {
-	let mut value = 0;
-	if ffi::eglGetSyncAttrib(
-		display.as_ptr(),
-		sync.as_ptr(),
-		attribute,
-		&mut value as *mut Attrib,
-	) == TRUE
-	{
-		Ok(value)
-	} else {
-		Err(get_error().unwrap())
-	}
-}
-
-/// Create a new Image object.
-///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
-/// instead of `NONE` to terminate the attribute list.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `ATTRIB_NONE`).
-pub fn create_image(
-	display: Display,
-	ctx: Context,
-	target: Enum,
-	buffer: ClientBuffer,
-	attrib_list: &[Attrib],
-) -> Result<Image, Error> {
-	check_attrib_list(attrib_list)?;
-	unsafe {
-		let image = ffi::eglCreateImage(
-			display.as_ptr(),
-			ctx.as_ptr(),
-			target,
-			buffer.as_ptr(),
-			attrib_list.as_ptr(),
-		);
-		if image != NO_IMAGE {
-			Ok(Image(image))
+impl<T: Api> Instance<T> {
+	/// Create a new EGL sync object.
+	///
+	/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+	/// instead of `NONE` to terminate the attribute list.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+	///
+	/// This function is unsafe: when creating an OpenCL Event Sync Object, passing an invalid event
+	/// handle in `attrib_list` may result in undefined behavior up to and including program
+	/// termination.
+	pub unsafe fn create_sync(&self, display: Display, ty: Enum, attrib_list: &[Attrib]) -> Result<Sync, Error> {
+		check_attrib_list(attrib_list)?;
+		let sync = self.api.eglCreateSync(display.as_ptr(), ty, attrib_list.as_ptr());
+		if sync != NO_SYNC {
+			Ok(Sync(sync))
 		} else {
-			Err(get_error().unwrap())
+			Err(self.get_error().unwrap())
 		}
 	}
-}
 
-/// Destroy an Image object.
-pub fn destroy_image(display: Display, image: Image) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglDestroyImage(display.as_ptr(), image.as_ptr()) == TRUE {
+	/// Destroy a sync object.
+	///
+	/// This function is unsafe: if display does not match the display passed to eglCreateSync when
+	/// sync was created, the behaviour is undefined.
+	pub unsafe fn destroy_sync(&self, display: Display, sync: Sync) -> Result<(), Error> {
+		if self.api.eglDestroySync(display.as_ptr(), sync.as_ptr()) == TRUE {
 			Ok(())
 		} else {
-			Err(get_error().unwrap())
+			Err(self.get_error().unwrap())
 		}
 	}
-}
 
-/// Return an EGL display connection.
-///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
-/// instead of `NONE` to terminate the attribute list.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `ATTRIB_NONE`).
-pub fn get_platform_display(
-	platform: Enum,
-	native_display: *mut c_void,
-	attrib_list: &[Attrib],
-) -> Result<Display, Error> {
-	check_attrib_list(attrib_list)?;
-	unsafe {
-		let display = ffi::eglGetPlatformDisplay(platform, native_display, attrib_list.as_ptr());
-		if display != NO_DISPLAY {
-			Ok(Display(display))
+	/// Wait in the client for a sync object to be signalled.
+	///
+	/// This function is unsafe: if `display` does not match the [`Display`] passed to [`create_sync`](Self::create_sync)
+	/// when `sync` was created, the behaviour is undefined.
+	pub unsafe fn client_wait_sync(&self, display: Display, sync: Sync, flags: Int, timeout: Time) -> Result<Int, Error> {
+		let status = self.api.eglClientWaitSync(display.as_ptr(), sync.as_ptr(), flags, timeout);
+		if status != FALSE as Int {
+			Ok(status)
 		} else {
-			Err(get_error().unwrap())
+			Err(self.get_error().unwrap())
 		}
 	}
-}
 
-/// Create a new EGL on-screen rendering surface.
-///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
-/// instead of `NONE` to terminate the attribute list.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `ATTRIB_NONE`).
-pub fn create_platform_window_surface(
-	display: Display,
-	config: Config,
-	native_window: *mut c_void,
-	attrib_list: &[Attrib],
-) -> Result<Surface, Error> {
-	check_attrib_list(attrib_list)?;
-	unsafe {
-		let surface = ffi::eglCreatePlatformWindowSurface(
+	/// Return an attribute of a sync object.
+	///
+	/// This function is unsafe: If `display` does not match the [`Display`] passed to [`create_sync`](Self::create_sync)
+	/// when `sync` was created, behaviour is undefined.
+	pub unsafe fn get_sync_attrib(&self, display: Display, sync: Sync, attribute: Int) -> Result<Attrib, Error> {
+		let mut value = 0;
+		if self.api.eglGetSyncAttrib(
 			display.as_ptr(),
-			config.as_ptr(),
-			native_window,
-			attrib_list.as_ptr(),
-		);
-		if surface != NO_SURFACE {
-			Ok(Surface(surface))
+			sync.as_ptr(),
+			attribute,
+			&mut value as *mut Attrib,
+		) == TRUE
+		{
+			Ok(value)
 		} else {
-			Err(get_error().unwrap())
+			Err(self.get_error().unwrap())
 		}
 	}
-}
 
-/// Create a new EGL offscreen surface.
-///
-/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
-/// instead of `NONE` to terminate the attribute list.
-///
-/// This will return a `BadParameter` error if `attrib_list` is not a valid
-/// attributes list (if it does not terminate with `ATTRIB_NONE`).
-pub fn create_platform_pixmap_surface(
-	display: Display,
-	config: Config,
-	native_pixmap: *mut c_void,
-	attrib_list: &[Attrib],
-) -> Result<Surface, Error> {
-	check_attrib_list(attrib_list)?;
-	unsafe {
-		let surface = ffi::eglCreatePlatformPixmapSurface(
-			display.as_ptr(),
-			config.as_ptr(),
-			native_pixmap,
-			attrib_list.as_ptr(),
-		);
-		if surface != NO_SURFACE {
-			Ok(Surface(surface))
-		} else {
-			Err(get_error().unwrap())
+	/// Create a new Image object.
+	///
+	/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+	/// instead of `NONE` to terminate the attribute list.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+	pub fn create_image(&self, display: Display, ctx: Context, target: Enum, buffer: ClientBuffer, attrib_list: &[Attrib]) -> Result<Image, Error> {
+		check_attrib_list(attrib_list)?;
+		unsafe {
+			let image = self.api.eglCreateImage(
+				display.as_ptr(),
+				ctx.as_ptr(),
+				target,
+				buffer.as_ptr(),
+				attrib_list.as_ptr(),
+			);
+			if image != NO_IMAGE {
+				Ok(Image(image))
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
-}
 
-/// Wait in the server for a sync object to be signalled.
-///
-/// This function is unsafe: if `display` does not match the [`Display`] passed to [`create_sync`]
-/// when `sync` was created, the behavior is undefined.
-pub fn wait_sync(display: Display, sync: Sync, flags: Int) -> Result<(), Error> {
-	unsafe {
-		if ffi::eglWaitSync(display.as_ptr(), sync.as_ptr(), flags) == TRUE {
-			Ok(())
-		} else {
-			Err(get_error().unwrap())
+	/// Destroy an Image object.
+	pub fn destroy_image(&self, display: Display, image: Image) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglDestroyImage(display.as_ptr(), image.as_ptr()) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Return an EGL display connection.
+	///
+	/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+	/// instead of `NONE` to terminate the attribute list.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+	pub fn get_platform_display(&self, platform: Enum, native_display: *mut c_void, attrib_list: &[Attrib]) -> Result<Display, Error> {
+		check_attrib_list(attrib_list)?;
+		unsafe {
+			let display = self.api.eglGetPlatformDisplay(platform, native_display, attrib_list.as_ptr());
+			if display != NO_DISPLAY {
+				Ok(Display(display))
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Create a new EGL on-screen rendering surface.
+	///
+	/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+	/// instead of `NONE` to terminate the attribute list.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+	pub fn create_platform_window_surface(&self, display: Display, config: Config, native_window: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
+		check_attrib_list(attrib_list)?;
+		unsafe {
+			let surface = self.api.eglCreatePlatformWindowSurface(
+				display.as_ptr(),
+				config.as_ptr(),
+				native_window,
+				attrib_list.as_ptr(),
+			);
+			if surface != NO_SURFACE {
+				Ok(Surface(surface))
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Create a new EGL offscreen surface.
+	///
+	/// Note that the constant `ATTRIB_NONE` which has the type `Attrib` can be used
+	/// instead of `NONE` to terminate the attribute list.
+	///
+	/// This will return a `BadParameter` error if `attrib_list` is not a valid
+	/// attributes list (if it does not terminate with `ATTRIB_NONE`).
+	pub fn create_platform_pixmap_surface(&self, display: Display, config: Config, native_pixmap: *mut c_void, attrib_list: &[Attrib]) -> Result<Surface, Error> {
+		check_attrib_list(attrib_list)?;
+		unsafe {
+			let surface = self.api.eglCreatePlatformPixmapSurface(
+				display.as_ptr(),
+				config.as_ptr(),
+				native_pixmap,
+				attrib_list.as_ptr(),
+			);
+			if surface != NO_SURFACE {
+				Ok(Surface(surface))
+			} else {
+				Err(self.get_error().unwrap())
+			}
+		}
+	}
+
+	/// Wait in the server for a sync object to be signalled.
+	///
+	/// This function is unsafe: if `display` does not match the [`Display`] passed to [`create_sync`](Self::create_sync)
+	/// when `sync` was created, the behavior is undefined.
+	pub fn wait_sync(&self, display: Display, sync: Sync, flags: Int) -> Result<(), Error> {
+		unsafe {
+			if self.api.eglWaitSync(display.as_ptr(), sync.as_ptr(), flags) == TRUE {
+				Ok(())
+			} else {
+				Err(self.get_error().unwrap())
+			}
 		}
 	}
 }
@@ -1388,157 +1468,262 @@ pub fn wait_sync(display: Display, sync: Sync, flags: Int) -> Result<(), Error> 
 // FFI
 // -------------------------------------------------------------------------------------------------
 
-mod ffi {
-	use libc::{c_char, c_void};
+macro_rules! api {
+	($(pub fn $name:ident ($($arg:ident : $atype:ty ),* ) -> $rtype:ty);*) => {
+		/// EGL API interface.
+		/// 
+		/// An implementation of this trait can be used to create an [`Instance`].
+		/// 
+		/// This crate provides two implemntation of this trait:
+		///  - `Static` which is available with the `static` feature enabled,
+		///    defined by statically linking to the EGL library at compile time.
+		///  - `Dynamic` which is available with the `dynamic` feature enabled,
+		///    defined by dynamically linking to the EGL library at runtime.
+		pub unsafe trait Api {
+			$(
+				unsafe fn $name(&self, $($arg : $atype),*) -> $rtype;
+			)*
+		}
 
-	use super::{
-		Attrib, Boolean, EGLClientBuffer, EGLConfig, EGLContext, EGLDisplay, EGLImage, EGLSurface,
-		EGLSync, Enum, Int, NativeDisplayType, NativePixmapType, NativeWindowType, Time,
+		#[cfg(feature="static")]
+		/// Static EGL API interface.
+		/// 
+		/// Provided by statically linking th EGL library at compile time.
+		pub struct Static;
+
+		#[cfg(feature="static")]
+		unsafe impl Api for Static {
+			$(
+				#[inline(always)]
+				unsafe fn $name(&self, $($arg : $atype),*) -> $rtype {
+					ffi::$name($($arg),*)
+				}
+			)*
+		}
+
+		#[cfg(feature="static")]
+		mod ffi {
+			use libc::{c_char, c_void};
+			
+			use super::{
+				Attrib, Boolean, EGLClientBuffer, EGLConfig, EGLContext, EGLDisplay, EGLImage, EGLSurface,
+				EGLSync, Enum, Int, NativeDisplayType, NativePixmapType, NativeWindowType, Time,
+			};
+
+			extern "C" {
+				$(
+					pub fn $name ($($arg : $atype ),* ) -> $rtype;
+				)*
+			}
+		}
+
+		#[cfg(feature="static")]
+		#[cfg(feature="nightly")]
+		pub static API: Instance<Static> = Instance::new(Static);
+
+		#[cfg(feature="dynamic")]
+		extern crate libloading;
+
+		#[cfg(feature="dynamic")]
+		/// Dynamic EGL API interface.
+		pub struct Dynamic<L: std::borrow::Borrow<libloading::Library>> {
+			lib: L,
+			$(
+				$name : unsafe extern "C" fn($($atype ),*) -> $rtype,
+			)*
+		}
+
+		#[cfg(feature="dynamic")]
+		unsafe impl<L: std::borrow::Borrow<libloading::Library> + Send> Send for Dynamic<L> {}
+
+		#[cfg(feature="dynamic")]
+		unsafe impl<L: std::borrow::Borrow<libloading::Library> + std::marker::Sync> std::marker::Sync for Dynamic<L> {}
+
+		#[cfg(feature="dynamic")]
+		impl<L: std::borrow::Borrow<libloading::Library>> Dynamic<L> {
+			#[inline]
+			pub unsafe fn new(lib: L) -> Result<Dynamic<L>, libloading::Error> {
+				$(
+					let $name = (&lib.borrow().get::<unsafe extern "C" fn($($atype ),*) -> $rtype>(stringify!($name).as_bytes())?.into_raw().into_raw()) as *const _ as *const unsafe extern "C" fn($($atype ),*) -> $rtype;
+					assert!(!$name.is_null());
+				)*
+
+				Ok(Dynamic {
+					lib,
+					$(
+						$name: *$name,
+					)*
+				})
+			}
+
+			#[inline(always)]
+			pub fn library(&self) -> &L {
+				&self.lib
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		unsafe impl<L: std::borrow::Borrow<libloading::Library>> Api for Dynamic<L> {
+			$(
+				#[inline(always)]
+				unsafe fn $name(&self, $($arg : $atype),*) -> $rtype {
+					(self.$name)($($arg),*)
+				}
+			)*
+		}
+
+		#[cfg(feature="dynamic")]
+		impl<L: std::borrow::Borrow<libloading::Library>> Instance<Dynamic<L>> {
+			#[inline(always)]
+			pub unsafe fn from_lib(lib: L) -> Result<Instance<Dynamic<L>>, libloading::Error> {
+				Ok(Instance::new(Dynamic::new(lib)?))
+			}
+		}
 	};
+}
 
-	extern "C" {
-		// EGL 1.0
-		pub fn eglChooseConfig(
-			display: EGLDisplay,
-			attrib_list: *const Int,
-			configs: *mut EGLConfig,
-			config_size: Int,
-			num_config: *mut Int,
-		) -> Boolean;
-		pub fn eglCopyBuffers(
-			display: EGLDisplay,
-			surface: EGLSurface,
-			target: NativePixmapType,
-		) -> Boolean;
-		pub fn eglCreateContext(
-			display: EGLDisplay,
-			config: EGLConfig,
-			share_context: EGLContext,
-			attrib_list: *const Int,
-		) -> EGLContext;
-		pub fn eglCreatePbufferSurface(
-			display: EGLDisplay,
-			config: EGLConfig,
-			attrib_list: *const Int,
-		) -> EGLSurface;
-		pub fn eglCreatePixmapSurface(
-			display: EGLDisplay,
-			config: EGLConfig,
-			pixmap: NativePixmapType,
-			attrib_list: *const Int,
-		) -> EGLSurface;
-		pub fn eglCreateWindowSurface(
-			display: EGLDisplay,
-			config: EGLConfig,
-			win: NativeWindowType,
-			attrib_list: *const Int,
-		) -> EGLSurface;
-		pub fn eglDestroyContext(display: EGLDisplay, ctx: EGLContext) -> Boolean;
-		pub fn eglDestroySurface(display: EGLDisplay, surface: EGLSurface) -> Boolean;
-		pub fn eglGetConfigAttrib(
-			display: EGLDisplay,
-			config: EGLConfig,
-			attribute: Int,
-			value: *mut Int,
-		) -> Boolean;
-		pub fn eglGetConfigs(
-			display: EGLDisplay,
-			configs: *mut EGLConfig,
-			config_size: Int,
-			num_config: *mut Int,
-		) -> Boolean;
-		pub fn eglGetCurrentDisplay() -> EGLDisplay;
-		pub fn eglGetCurrentSurface(readdraw: Int) -> EGLSurface;
-		pub fn eglGetDisplay(display_id: NativeDisplayType) -> EGLDisplay;
-		pub fn eglGetError() -> Int;
-		pub fn eglGetProcAddress(procname: *const c_char) -> extern "C" fn();
-		pub fn eglInitialize(display: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
-		pub fn eglMakeCurrent(
-			display: EGLDisplay,
-			draw: EGLSurface,
-			read: EGLSurface,
-			ctx: EGLContext,
-		) -> Boolean;
-		pub fn eglQueryContext(
-			display: EGLDisplay,
-			ctx: EGLContext,
-			attribute: Int,
-			value: *mut Int,
-		) -> Boolean;
-		pub fn eglQueryString(display: EGLDisplay, name: Int) -> *const c_char;
-		pub fn eglQuerySurface(
-			display: EGLDisplay,
-			surface: EGLSurface,
-			attribute: Int,
-			value: *mut Int,
-		) -> Boolean;
-		pub fn eglSwapBuffers(display: EGLDisplay, surface: EGLSurface) -> Boolean;
-		pub fn eglTerminate(display: EGLDisplay) -> Boolean;
-		pub fn eglWaitGL() -> Boolean;
-		pub fn eglWaitNative(engine: Int) -> Boolean;
+api! {
+	// EGL 1.0
+	pub fn eglChooseConfig(
+		display: EGLDisplay,
+		attrib_list: *const Int,
+		configs: *mut EGLConfig,
+		config_size: Int,
+		num_config: *mut Int
+	) -> Boolean;
+	pub fn eglCopyBuffers(
+		display: EGLDisplay,
+		surface: EGLSurface,
+		target: NativePixmapType
+	) -> Boolean;
+	pub fn eglCreateContext(
+		display: EGLDisplay,
+		config: EGLConfig,
+		share_context: EGLContext,
+		attrib_list: *const Int
+	) -> EGLContext;
+	pub fn eglCreatePbufferSurface(
+		display: EGLDisplay,
+		config: EGLConfig,
+		attrib_list: *const Int
+	) -> EGLSurface;
+	pub fn eglCreatePixmapSurface(
+		display: EGLDisplay,
+		config: EGLConfig,
+		pixmap: NativePixmapType,
+		attrib_list: *const Int
+	) -> EGLSurface;
+	pub fn eglCreateWindowSurface(
+		display: EGLDisplay,
+		config: EGLConfig,
+		win: NativeWindowType,
+		attrib_list: *const Int
+	) -> EGLSurface;
+	pub fn eglDestroyContext(display: EGLDisplay, ctx: EGLContext) -> Boolean;
+	pub fn eglDestroySurface(display: EGLDisplay, surface: EGLSurface) -> Boolean;
+	pub fn eglGetConfigAttrib(
+		display: EGLDisplay,
+		config: EGLConfig,
+		attribute: Int,
+		value: *mut Int
+	) -> Boolean;
+	pub fn eglGetConfigs(
+		display: EGLDisplay,
+		configs: *mut EGLConfig,
+		config_size: Int,
+		num_config: *mut Int
+	) -> Boolean;
+	pub fn eglGetCurrentDisplay() -> EGLDisplay;
+	pub fn eglGetCurrentSurface(readdraw: Int) -> EGLSurface;
+	pub fn eglGetDisplay(display_id: NativeDisplayType) -> EGLDisplay;
+	pub fn eglGetError() -> Int;
+	pub fn eglGetProcAddress(procname: *const c_char) -> extern "C" fn();
+	pub fn eglInitialize(display: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
+	pub fn eglMakeCurrent(
+		display: EGLDisplay,
+		draw: EGLSurface,
+		read: EGLSurface,
+		ctx: EGLContext
+	) -> Boolean;
+	pub fn eglQueryContext(
+		display: EGLDisplay,
+		ctx: EGLContext,
+		attribute: Int,
+		value: *mut Int
+	) -> Boolean;
+	pub fn eglQueryString(display: EGLDisplay, name: Int) -> *const c_char;
+	pub fn eglQuerySurface(
+		display: EGLDisplay,
+		surface: EGLSurface,
+		attribute: Int,
+		value: *mut Int
+	) -> Boolean;
+	pub fn eglSwapBuffers(display: EGLDisplay, surface: EGLSurface) -> Boolean;
+	pub fn eglTerminate(display: EGLDisplay) -> Boolean;
+	pub fn eglWaitGL() -> Boolean;
+	pub fn eglWaitNative(engine: Int) -> Boolean;
 
-		// EGL 1.1
-		pub fn eglBindTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
-		pub fn eglReleaseTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
-		pub fn eglSurfaceAttrib(
-			display: EGLDisplay,
-			surface: EGLSurface,
-			attribute: Int,
-			value: Int,
-		) -> Boolean;
-		pub fn eglSwapInterval(display: EGLDisplay, interval: Int) -> Boolean;
+	// EGL 1.1
+	pub fn eglBindTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
+	pub fn eglReleaseTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
+	pub fn eglSurfaceAttrib(
+		display: EGLDisplay,
+		surface: EGLSurface,
+		attribute: Int,
+		value: Int
+	) -> Boolean;
+	pub fn eglSwapInterval(display: EGLDisplay, interval: Int) -> Boolean;
 
-		// EGL 1.2
-		pub fn eglBindAPI(api: Enum) -> Boolean;
-		pub fn eglQueryAPI() -> Enum;
-		pub fn eglCreatePbufferFromClientBuffer(
-			display: EGLDisplay,
-			buftype: Enum,
-			buffer: EGLClientBuffer,
-			config: EGLConfig,
-			attrib_list: *const Int,
-		) -> EGLSurface;
-		pub fn eglReleaseThread() -> Boolean;
-		pub fn eglWaitClient() -> Boolean;
+	// EGL 1.2
+	pub fn eglBindAPI(api: Enum) -> Boolean;
+	pub fn eglQueryAPI() -> Enum;
+	pub fn eglCreatePbufferFromClientBuffer(
+		display: EGLDisplay,
+		buftype: Enum,
+		buffer: EGLClientBuffer,
+		config: EGLConfig,
+		attrib_list: *const Int
+	) -> EGLSurface;
+	pub fn eglReleaseThread() -> Boolean;
+	pub fn eglWaitClient() -> Boolean;
 
-		// EGL 1.4
-		pub fn eglGetCurrentContext() -> EGLContext;
+	// EGL 1.4
+	pub fn eglGetCurrentContext() -> EGLContext;
 
-		// EGL 1.5
-		pub fn eglCreateSync(display: EGLDisplay, type_: Enum, attrib_list: *const Attrib) -> EGLSync;
-		pub fn eglDestroySync(display: EGLDisplay, sync: EGLSync) -> Boolean;
-		pub fn eglClientWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int, timeout: Time) -> Int;
-		pub fn eglGetSyncAttrib(
-			display: EGLDisplay,
-			sync: EGLSync,
-			attribute: Int,
-			value: *mut Attrib,
-		) -> Boolean;
-		pub fn eglCreateImage(
-			display: EGLDisplay,
-			ctx: EGLContext,
-			target: Enum,
-			buffer: EGLClientBuffer,
-			attrib_list: *const Attrib,
-		) -> EGLImage;
-		pub fn eglDestroyImage(display: EGLDisplay, image: EGLImage) -> Boolean;
-		pub fn eglGetPlatformDisplay(
-			platform: Enum,
-			native_display: *mut c_void,
-			attrib_list: *const Attrib,
-		) -> EGLDisplay;
-		pub fn eglCreatePlatformWindowSurface(
-			display: EGLDisplay,
-			config: EGLConfig,
-			native_window: *mut c_void,
-			attrib_list: *const Attrib,
-		) -> EGLSurface;
-		pub fn eglCreatePlatformPixmapSurface(
-			display: EGLDisplay,
-			config: EGLConfig,
-			native_pixmap: *mut c_void,
-			attrib_list: *const Attrib,
-		) -> EGLSurface;
-		pub fn eglWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int) -> Boolean;
-	}
+	// EGL 1.5
+	pub fn eglCreateSync(display: EGLDisplay, type_: Enum, attrib_list: *const Attrib) -> EGLSync;
+	pub fn eglDestroySync(display: EGLDisplay, sync: EGLSync) -> Boolean;
+	pub fn eglClientWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int, timeout: Time) -> Int;
+	pub fn eglGetSyncAttrib(
+		display: EGLDisplay,
+		sync: EGLSync,
+		attribute: Int,
+		value: *mut Attrib
+	) -> Boolean;
+	pub fn eglCreateImage(
+		display: EGLDisplay,
+		ctx: EGLContext,
+		target: Enum,
+		buffer: EGLClientBuffer,
+		attrib_list: *const Attrib
+	) -> EGLImage;
+	pub fn eglDestroyImage(display: EGLDisplay, image: EGLImage) -> Boolean;
+	pub fn eglGetPlatformDisplay(
+		platform: Enum,
+		native_display: *mut c_void,
+		attrib_list: *const Attrib
+	) -> EGLDisplay;
+	pub fn eglCreatePlatformWindowSurface(
+		display: EGLDisplay,
+		config: EGLConfig,
+		native_window: *mut c_void,
+		attrib_list: *const Attrib
+	) -> EGLSurface;
+	pub fn eglCreatePlatformPixmapSurface(
+		display: EGLDisplay,
+		config: EGLConfig,
+		native_pixmap: *mut c_void,
+		attrib_list: *const Attrib
+	) -> EGLSurface;
+	pub fn eglWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int) -> Boolean
 }

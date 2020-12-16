@@ -10,14 +10,28 @@ readme        = "README.md"
 keywords      = ["egl", "gl", "khronos", "opengl"]
 build         = "build.rs"
 
+[features]
+static = ["pkg-config"]
+dynamic = ["libloading"]
+nightly = []
+
 [dependencies]
-libc    = "^0.2"
+libc = "^0.2"
+libloading = { version = "^0.6", optional = true }
 
 [build-dependencies]
-pkg-config = "^0.3"
+pkg-config = { version = "^0.3", optional = true }
 
 [dev-dependencies]
 gl = "^0.14"
 wayland-client = { version = "^0.28" }
 wayland-protocols = { version = "^0.28", features = [ "client" ] }
 wayland-egl = { version = "^0.28" }
+
+[[example]]
+name = "wayland-static"
+required-features = ["static", "nightly"]
+
+[[example]]
+name = "wayland-dynamic"
+required-features = ["dynamic"]

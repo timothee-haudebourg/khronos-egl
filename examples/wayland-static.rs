@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::ptr;
 use std::ffi::CStr;
 use gl::types::{GLint, GLuint, GLchar, GLenum, GLboolean, GLvoid};
+use egl::API as egl;
 
 use wayland_client::{
 	protocol::{wl_compositor::WlCompositor, wl_surface::WlSurface},
@@ -65,8 +66,8 @@ fn setup_wayland() -> DisplayConnection {
 }
 
 fn setup_egl(display: &Display) -> egl::Display {
-	let egl_display = egl::get_display(display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
-	egl::initialize(egl_display).unwrap();
+	let egl_display = egl.get_display(display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+	egl.initialize(egl_display).unwrap();
 
 	egl_display
 }
@@ -82,7 +83,7 @@ fn create_context(display: egl::Display) -> (egl::Context, egl::Config) {
 		egl::NONE,
 	];
 
-	let config = egl::choose_first_config(display, &attributes)
+	let config = egl.choose_first_config(display, &attributes)
 		.expect("unable to choose an EGL configuration")
 		.expect("no EGL configuration found");
 
@@ -96,7 +97,7 @@ fn create_context(display: egl::Display) -> (egl::Context, egl::Config) {
 		egl::NONE,
 	];
 
-	let context = egl::create_context(display, config, None, &context_attributes)
+	let context = egl.create_context(display, config, None, &context_attributes)
 		.expect("unable to create an EGL context");
 
 	(context, config)
@@ -142,7 +143,7 @@ fn create_surface(
 						let wl_egl_surface = wayland_egl::WlEglSurface::new(&surface.handle, width, height);
 
 						let egl_surface = unsafe {
-							egl::create_window_surface(
+							egl.create_window_surface(
 								egl_display,
 								egl_config,
 								wl_egl_surface.ptr() as egl::NativeWindowType,
@@ -151,12 +152,12 @@ fn create_surface(
 							.expect("unable to create an EGL surface")
 						};
 
-						egl::make_current(egl_display, Some(egl_surface), Some(egl_surface), Some(egl_context))
+						egl.make_current(egl_display, Some(egl_surface), Some(egl_surface), Some(egl_context))
 							.expect("unable to bind the context");
 
 						render();
 
-						egl::swap_buffers(egl_display, egl_surface)
+						egl.swap_buffers(egl_display, egl_surface)
 							.expect("unable to post the surface content");
 
 						xdg_surface.ack_configure(serial);
@@ -172,9 +173,9 @@ fn create_surface(
 
 fn main() {
 	// Setup Open GL.
-	egl::bind_api(egl::OPENGL_API)
+	egl.bind_api(egl::OPENGL_API)
 		.expect("unable to select OpenGL API");
-	gl::load_with(|name| egl::get_proc_address(name).unwrap() as *const std::ffi::c_void);
+	gl::load_with(|name| egl.get_proc_address(name).unwrap() as *const std::ffi::c_void);
 
 	// Setup the Wayland client.
 	let mut ctx = setup_wayland();
