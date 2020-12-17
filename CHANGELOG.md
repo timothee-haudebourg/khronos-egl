@@ -5,13 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unpublished]
+### Changed
+- Impl `Debug` for `Static`, `Dynamic` and `Instance`.
+- Add a `DynamicInstance` type alias for `Instance<Dynamic<libloading::Library>>` with helper functions.
+
 ## [3.0.0-beta]
 ### Changed
 - Removed the `khronos` dependency.
 - Dynamic linking: Add the `Api` trait and the `Instance` struct along with the `static` and `dynamic` features.
 - The dependency to `pkg-config` is now optional, only required by the `static` feature.
 - Add an optional dependency to `libloading`, only required by the `dynamic` feature.
-- Add a `DynamicInstance` type alias for `Instance<Dynamic<libloading::Library>>` with helper functions.
 
 ## [2.2.0]
 ### Added
