@@ -1490,6 +1490,7 @@ macro_rules! api {
 		/// Static EGL API interface.
 		/// 
 		/// Provided by statically linking th EGL library at compile time.
+		#[derive(Copy, Clone, Debug)]
 		pub struct Static;
 
 		#[cfg(feature="static")]
@@ -1539,6 +1540,13 @@ macro_rules! api {
 
 		#[cfg(feature="dynamic")]
 		unsafe impl<L: std::borrow::Borrow<libloading::Library> + std::marker::Sync> std::marker::Sync for Dynamic<L> {}
+
+		#[cfg(feature="dynamic")]
+		impl<L: std::borrow::Borrow<libloading::Library> + std::fmt::Debug> std::fmt::Debug for Dynamic<L> {
+			fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+				write!(f, "Dynamic({:?})", self.lib)
+			}
+		}
 
 		#[cfg(feature="dynamic")]
 		impl<L: std::borrow::Borrow<libloading::Library>> Dynamic<L> {
