@@ -1488,10 +1488,11 @@ macro_rules! api {
 		/// An implementation of this trait can be used to create an [`Instance`].
 		/// 
 		/// This crate provides two implemntation of this trait:
-		///  - `Static` which is available with the `static` feature enabled,
+		///  - [`Static`] which is available with the `static` feature enabled,
 		///    defined by statically linking to the EGL library at compile time.
-		///  - `Dynamic` which is available with the `dynamic` feature enabled,
+		///  - [`Dynamic`] which is available with the `dynamic` feature enabled,
 		///    defined by dynamically linking to the EGL library at runtime.
+		///    In this case, you may prefer to directly use the `DynamicInstance` type.
 		pub unsafe trait Api {
 			$(
 				unsafe fn $name(&self, $($arg : $atype),*) -> $rtype;
@@ -1501,7 +1502,8 @@ macro_rules! api {
 		#[cfg(feature="static")]
 		/// Static EGL API interface.
 		/// 
-		/// Provided by statically linking th EGL library at compile time.
+		/// This type is only available when the `static` feature is enabled,
+		/// by statically linking the EGL library at compile time.
 		#[derive(Copy, Clone, Debug)]
 		pub struct Static;
 
@@ -1540,6 +1542,9 @@ macro_rules! api {
 
 		#[cfg(feature="dynamic")]
 		/// Dynamic EGL API interface.
+		/// 
+		/// This type is only available when the `dynamic` feature is enabled.
+		/// In most cases, you may prefer to directly use the `DynamicInstance` type.
 		pub struct Dynamic<L: std::borrow::Borrow<libloading::Library>> {
 			lib: L,
 			$(
@@ -1563,6 +1568,10 @@ macro_rules! api {
 		#[cfg(feature="dynamic")]
 		impl<L: std::borrow::Borrow<libloading::Library>> Dynamic<L> {
 			#[inline]
+			/// Load the EGL API symbols from the given library.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn new(lib: L) -> Result<Dynamic<L>, libloading::Error> {
 				$(
 					let $name = (&lib.borrow().get::<unsafe extern "C" fn($($atype ),*) -> $rtype>(stringify!($name).as_bytes())?.into_raw().into_raw()) as *const _ as *const unsafe extern "C" fn($($atype ),*) -> $rtype;
@@ -1578,6 +1587,7 @@ macro_rules! api {
 			}
 
 			#[inline(always)]
+			/// Return the underlying EGL library.
 			pub fn library(&self) -> &L {
 				&self.lib
 			}
@@ -1596,8 +1606,43 @@ macro_rules! api {
 		#[cfg(feature="dynamic")]
 		impl<L: std::borrow::Borrow<libloading::Library>> Instance<Dynamic<L>> {
 			#[inline(always)]
+			/// Create an EGL instance using the symbols provided by the given library.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn from_lib(lib: L) -> Result<Instance<Dynamic<L>>, libloading::Error> {
 				Ok(Instance::new(Dynamic::new(lib)?))
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		/// Alias for dynamically linked instances.
+		pub type DynamicInstance = Instance<Dynamic<libloading::Library>>;
+
+		#[cfg(feature="dynamic")]
+		impl DynamicInstance {
+			#[inline(always)]
+			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
+			/// 
+			/// This is equivalent to `DynamicInstance::from_lib(libloading::Library::new(filename)?)`.
+			/// See [`Library::new`](libloading::Library::new)
+			/// for more details on how the `filename` argument is used.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
+			pub unsafe fn from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance, libloading::Error> {
+				Self::from_lib(libloading::Library::new(filename)?)
+			}
+
+			#[inline(always)]
+			/// Create an EGL instance by finding and loading the `libEGL.so` library.
+			/// 
+			/// This is equivalent to `DynamicInstance::from_filename("libEGL.so")`.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
+			pub unsafe fn load() -> Result<DynamicInstance, libloading::Error> {
+				Self::from_lib(libloading::Library::new("libEGL.so")?)
 			}
 		}
 	};
