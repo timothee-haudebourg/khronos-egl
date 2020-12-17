@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dynamic linking: Add the `Api` trait and the `Instance` struct along with the `static` and `dynamic` features.
 - The dependency to `pkg-config` is now optional, only required by the `static` feature.
 - Add an optional dependency to `libloading`, only required by the `dynamic` feature.
+- Add a `DynamicInstance` type alias for `Instance<Dynamic<libloading::Library>>` with helper functions.
 
 ## [2.2.0]
 ### Added
