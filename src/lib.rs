@@ -455,6 +455,18 @@ impl<T: Api> Instance<T> {
 	}
 }
 
+impl<T: Api + fmt::Debug> fmt::Debug for Instance<T> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "Instance({:?})", self.api)
+	}
+}
+
+impl<T: Api> From<T> for Instance<T> {
+	fn from(t: T) -> Instance<T> {
+		Instance::new(t)
+	}
+}
+
 impl<T: Api> Instance<T> {
 	/// Return the number of EGL frame buffer configurations that atch specified
 	/// attributes.
@@ -1542,8 +1554,8 @@ macro_rules! api {
 		unsafe impl<L: std::borrow::Borrow<libloading::Library> + std::marker::Sync> std::marker::Sync for Dynamic<L> {}
 
 		#[cfg(feature="dynamic")]
-		impl<L: std::borrow::Borrow<libloading::Library> + std::fmt::Debug> std::fmt::Debug for Dynamic<L> {
-			fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		impl<L: std::borrow::Borrow<libloading::Library> + fmt::Debug> fmt::Debug for Dynamic<L> {
+			fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 				write!(f, "Dynamic({:?})", self.lib)
 			}
 		}
