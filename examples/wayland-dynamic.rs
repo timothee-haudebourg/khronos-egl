@@ -10,7 +10,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::ptr;
 use std::ffi::CStr;
 use gl::types::{GLint, GLuint, GLchar, GLenum, GLboolean, GLvoid};
-use libloading::Library;
 
 use wayland_client::{
 	protocol::{wl_compositor::WlCompositor, wl_surface::WlSurface},
@@ -66,14 +65,14 @@ fn setup_wayland() -> DisplayConnection {
 	}
 }
 
-fn setup_egl(egl: &egl::Instance<egl::Dynamic<Library>>, display: &Display) -> egl::Display {
+fn setup_egl(egl: &egl::DynamicInstance, display: &Display) -> egl::Display {
 	let egl_display = egl.get_display(display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
 	egl.initialize(egl_display).unwrap();
 
 	egl_display
 }
 
-fn create_context(egl: &egl::Instance<egl::Dynamic<Library>>, display: egl::Display) -> (egl::Context, egl::Config) {
+fn create_context(egl: &egl::DynamicInstance, display: egl::Display) -> (egl::Context, egl::Config) {
 	let attributes = [
 		egl::RED_SIZE,
 		8,
@@ -110,7 +109,7 @@ struct Surface {
 }
 
 fn create_surface(
-	egl: &Arc<egl::Instance<egl::Dynamic<Library>>>,
+	egl: &Arc<egl::DynamicInstance>,
 	ctx: &DisplayConnection,
 	egl_display: egl::Display,
 	egl_context: egl::Context,
@@ -175,8 +174,7 @@ fn create_surface(
 }
 
 fn main() {
-	let lib = Library::new("libEGL.so").expect("unable to find libEGL.so");
-	let egl = unsafe { Arc::new(egl::Instance::from_lib(lib).expect("unable to load libEGL.so")) };
+	let egl = unsafe { Arc::new(egl::DynamicInstance::from_filename("/nix/store/yac0mc9q0vfsax33gsnmj1cpvp8pcc4v-libglvnd-1.3.2/lib/libEGL.so").expect("unable to load libEGL.so")) };
 
 	// Setup Open GL.
 	egl.bind_api(egl::OPENGL_API)

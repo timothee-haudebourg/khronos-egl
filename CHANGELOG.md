@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Impl `Debug` for `Static`, `Dynamic` and `Instance`.
 - Add a `DynamicInstance` type alias for `Instance<Dynamic<libloading::Library>>` with helper functions.
+- Precise version selection.
 
 ## [3.0.0-beta]
 ### Changed
