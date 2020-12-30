@@ -31,10 +31,10 @@ fn main() {
 	}
 }
 
-fn foo_with_1_4<V: egl::api::EGL1_4>(egl: &egl::Instance<V>) {
+fn foo_with_1_4<V: egl::api::EGL1_4>(_egl: &egl::Instance<V>) {
 	// do something that requires at least EGL 1.4.
 }
 
-fn foo_without_1_4<V>(egl: &egl::Instance<V>) {
+fn foo_without_1_4<V>(_egl: &egl::Instance<V>) {
 	// do something without any specific EGL version (other that 1.0).
 }
