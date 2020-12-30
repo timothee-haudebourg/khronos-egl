@@ -2044,6 +2044,8 @@ macro_rules! api {
 		/// Used by [`Dynamic`] to statically know the EGL API version provided by the library.
 		pub struct $id;
 
+		#[cfg(feature="dynamic")]
+		#[cfg(feature=$version)]
 		impl $id {
 			#[allow(unused_variables)]
 			unsafe fn load<L: std::borrow::Borrow<libloading::Library>>(raw: &mut RawDynamic<L>) -> Result<(), libloading::Error> {
@@ -2087,6 +2089,7 @@ macro_rules! api {
 
 		$(
 			#[cfg(feature="dynamic")]
+			#[cfg(feature=$version)]
 			impl<L: std::borrow::Borrow<libloading::Library>> TryFrom<Dynamic<L, $pred>> for Dynamic<L, $id> {
 				type Error = Dynamic<L, $pred>;
 
@@ -2103,6 +2106,7 @@ macro_rules! api {
 			}
 
 			#[cfg(feature="dynamic")]
+			#[cfg(feature=$version)]
 			impl<L: std::borrow::Borrow<libloading::Library>> From<Dynamic<L, $id>> for Dynamic<L, $pred> {
 				fn from(other: Dynamic<L, $id>) -> Self {
 					Dynamic {
@@ -2113,6 +2117,7 @@ macro_rules! api {
 			}
 
 			#[cfg(feature="dynamic")]
+			#[cfg(feature=$version)]
 			impl<L: std::borrow::Borrow<libloading::Library>> AsRef<Dynamic<L, $pred>> for Dynamic<L, $id> {
 				fn as_ref(&self) -> &Dynamic<L, $pred> {
 					unsafe { std::mem::transmute(self) } // this is safe because both types have the same repr.
@@ -2120,6 +2125,7 @@ macro_rules! api {
 			}
 
 			#[cfg(feature="dynamic")]
+			#[cfg(feature=$version)]
 			impl<L: std::borrow::Borrow<libloading::Library>> Downcast<Dynamic<L, $pred>> for Dynamic<L, $id> {
 				fn downcast(&self) -> &Dynamic<L, $pred> {
 					unsafe { std::mem::transmute(self) } // this is safe because both types have the same repr.
@@ -2127,6 +2133,7 @@ macro_rules! api {
 			}
 
 			#[cfg(feature="dynamic")]
+			#[cfg(feature=$version)]
 			impl<L: std::borrow::Borrow<libloading::Library>> Downcast<Instance<Dynamic<L, $pred>>> for Instance<Dynamic<L, $id>> {
 				fn downcast(&self) -> &Instance<Dynamic<L, $pred>> {
 					unsafe { std::mem::transmute(self) } // this is safe because both types have the same repr.
@@ -2134,6 +2141,7 @@ macro_rules! api {
 			}
 
 			#[cfg(feature="dynamic")]
+			#[cfg(feature=$version)]
 			impl<L: std::borrow::Borrow<libloading::Library>> Upcast<Dynamic<L, $id>> for Dynamic<L, $pred> {
 				fn upcast(&self) -> Option<&Dynamic<L, $id>> {
 					if self.version() >= Version::$id {
@@ -2145,6 +2153,7 @@ macro_rules! api {
 			}
 
 			#[cfg(feature="dynamic")]
+			#[cfg(feature=$version)]
 			impl<L: std::borrow::Borrow<libloading::Library>> Upcast<Instance<Dynamic<L, $id>>> for Instance<Dynamic<L, $pred>> {
 				fn upcast(&self) -> Option<&Instance<Dynamic<L, $id>>> {
 					if self.version() >= Version::$id {
