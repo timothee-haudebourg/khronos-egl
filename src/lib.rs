@@ -116,6 +116,32 @@ use std::ptr;
 
 use libc::{c_uint, c_char, c_void};
 
+/// EGL API provider.
+pub trait Api {
+	/// Version of the provided EGL API.
+	fn version(&self) -> Version;
+}
+
+pub trait Downcast<V> {
+	fn downcast(&self) -> &V;
+}
+
+impl<T> Downcast<T> for T {
+	fn downcast(&self) -> &T {
+		self
+	}
+}
+
+pub trait Upcast<V> {
+	fn upcast(&self) -> Option<&V>;
+}
+
+impl<T> Upcast<T> for T {
+	fn upcast(&self) -> Option<&T> {
+		Some(self)
+	}
+}
+
 /// EGL API instance.
 /// 
 /// An instance wraps an interface to the EGL API and provide
@@ -126,15 +152,36 @@ pub struct Instance<T> {
 
 impl<T> Instance<T> {
 	/// Cast the API.
-	pub fn cast<U: From<T>>(self) -> Instance<U> {
+	#[inline(always)]
+	pub fn cast_into<U: From<T>>(self) -> Instance<U> {
 		Instance {
 			api: self.api.into()
 		}
+	}
+
+	/// Try to cast the API.
+	#[inline(always)]
+	pub fn try_cast_into<U: TryFrom<T>>(self) -> Result<Instance<U>, Instance<U::Error>> {
+		match self.api.try_into() {
+			Ok(t) => Ok(Instance {
+				api: t
+			}),
+			Err(e) => Err(Instance {
+				api: e
+			})
+		}
+	}
+
+	/// Returns the version of the provided EGL API.
+	#[inline(always)]
+	pub fn version(&self) -> Version where T: Api {
+		self.api.version()
 	}
 }
 
 impl<T> Instance<T> {
 	#[cfg(feature="nightly")]
+	#[inline(always)]
 	pub const fn new(api: T) -> Instance<T> {
 		Instance {
 			api
@@ -142,6 +189,7 @@ impl<T> Instance<T> {
 	}
 
 	#[cfg(not(feature="nightly"))]
+	#[inline(always)]
 	pub fn new(api: T) -> Instance<T> {
 		Instance {
 			api
@@ -150,12 +198,14 @@ impl<T> Instance<T> {
 }
 
 impl<T: fmt::Debug> fmt::Debug for Instance<T> {
+	#[inline(always)]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(f, "Instance({:?})", self.api)
 	}
 }
 
 impl<T> From<T> for Instance<T> {
+	#[inline(always)]
 	fn from(t: T) -> Instance<T> {
 		Instance::new(t)
 	}
@@ -1571,7 +1621,26 @@ pub use egl1_5::*;
 
 macro_rules! api {
 	($($id:ident : $version:literal { $(fn $name:ident ($($arg:ident : $atype:ty ),* ) -> $rtype:ty ;)* }),*) => {
-		mod api {
+		#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+		pub enum Version {
+			$(
+				#[cfg(feature=$version)]
+				$id,
+			)*
+		}
+
+		impl std::fmt::Display for Version {
+			fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+				match self {
+					$(
+						#[cfg(feature=$version)]
+						Version::$id => write!(f, $version),
+					)*
+				}
+			}
+		}
+
+		pub mod api {
 			use super::*;
 
 			api!(@api_traits () () $($id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* })*);
@@ -1605,6 +1674,14 @@ macro_rules! api {
 		pub struct Static;
 
 		#[cfg(feature="static")]
+		impl Api for Static {
+			#[inline(always)]
+			fn version(&self) -> Version {
+				LATEST
+			}
+		}
+
+		#[cfg(feature="static")]
 		#[cfg(feature="nightly")]
 		pub static API: Instance<Static> = Instance::new(Static);
 
@@ -1616,6 +1693,86 @@ macro_rules! api {
 	};
 	(@dynamic_struct $($id:ident : $version:literal { $(fn $name:ident ($($arg:ident : $atype:ty ),* ) -> $rtype:ty ;)* })*) => {
 		#[cfg(feature="dynamic")]
+		#[derive(Debug)]
+		pub enum LoadError<L> {
+			/// Something wrong happend while loading the library.
+			Library(L),
+
+			/// The provided version does not meet the requirements.
+			InvalidVersion {
+				provided: Version,
+				required: Version
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		impl<L: std::error::Error + 'static> std::error::Error for LoadError<L> {
+			fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+				match self {
+					LoadError::Library(l) => Some(l),
+					_ => None
+				}
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		impl<L: std::fmt::Display> std::fmt::Display for LoadError<L> {
+			fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+				match self {
+					LoadError::Library(l) => write!(f, "Load error: {}", l),
+					LoadError::InvalidVersion { provided, required } => write!(f, "Invalid EGL API version (required {}, provided {})", required, provided)
+				}
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		struct RawDynamic<L> {
+			lib: L,
+			version: Version,
+			$(
+				$(
+					#[cfg(feature=$version)]
+					$name : std::mem::MaybeUninit<unsafe extern "C" fn($($atype ),*) -> $rtype>,
+				)*
+			)*
+		}
+
+		#[cfg(feature="dynamic")]
+		impl<L> RawDynamic<L> {
+			#[inline(always)]
+			/// Returns the underlying EGL library.
+			pub fn library(&self) -> &L {
+				&self.lib
+			}
+
+			#[inline(always)]
+			/// Returns the EGL version.
+			pub fn version(&self) -> Version {
+				self.version
+			}
+
+			#[inline(always)]
+			/// Sets the EGL version.
+			pub unsafe fn set_version(&mut self, version: Version) {
+				self.version = version
+			}
+
+			/// Wraps the given library but does not load the symbols.
+			pub unsafe fn unloaded(lib: L, version: Version) -> Self {
+				RawDynamic {
+					lib,
+					version,
+					$(
+						$(
+							#[cfg(feature=$version)]
+							$name : std::mem::MaybeUninit::uninit(),
+						)*
+					)*
+				}
+			}
+		}
+
+		#[cfg(feature="dynamic")]
 		/// Dynamic EGL API interface.
 		/// 
 		/// The first type parameter is the type of the underlying library handle.
@@ -1624,13 +1781,7 @@ macro_rules! api {
 		/// This type is only available when the `dynamic` feature is enabled.
 		/// In most cases, you may prefer to directly use the `DynamicInstance` type.
 		pub struct Dynamic<L, A> {
-			lib: L,
-			$(
-				$(
-					#[cfg(feature=$version)]
-					$name : std::mem::MaybeUninit<unsafe extern "C" fn($($atype ),*) -> $rtype>,
-				)*
-			)*
+			raw: RawDynamic<L>,
 			_api_version: std::marker::PhantomData<A>
 		}
 
@@ -1639,21 +1790,93 @@ macro_rules! api {
 			#[inline(always)]
 			/// Return the underlying EGL library.
 			pub fn library(&self) -> &L {
-				&self.lib
+				self.raw.library()
+			}
+
+			pub fn version(&self) -> Version {
+				self.raw.version()
 			}
 
 			/// Wraps the given library but does not load the symbols.
-			pub(crate) unsafe fn unloaded(lib: L) -> Self {
+			pub(crate) unsafe fn unloaded(lib: L, version: Version) -> Self {
 				Dynamic {
-					lib,
-					$(
-						$(
-							#[cfg(feature=$version)]
-							$name : std::mem::MaybeUninit::uninit(),
-						)*
-					)*
+					raw: RawDynamic::unloaded(lib, version),
 					_api_version: std::marker::PhantomData
 				}
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		impl<L, A> Api for Dynamic<L, A> {
+			#[inline(always)]
+			fn version(&self) -> Version {
+				self.version()
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		#[cfg(feature="1.0")]
+		impl<L: std::borrow::Borrow<libloading::Library>> Dynamic<L, EGL1_0> {
+			#[inline]
+			/// Load the EGL API symbols from the given library.
+			/// 
+			/// This will load the most recent API provided by the library,
+			/// which is at least EGL 1.0.
+			/// You can check what version has actually been loaded using [`Dynamic::version`],
+			/// and/or convert to a more recent version using [`try_into`](TryInto::try_into).
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
+			pub unsafe fn load(lib: L) -> Result<Dynamic<L, EGL1_0>, libloading::Error> {
+				let mut result = Dynamic::unloaded(lib, Version::EGL1_0);
+
+				$(
+					match $id::load(&mut result.raw) {
+						Ok(()) => result.raw.set_version(Version::$id),
+						Err(libloading::Error::DlSymUnknown) => {
+							if Version::$id == Version::EGL1_0 {
+								return Err(libloading::Error::DlSymUnknown) // we require at least EGL 1.0.
+							} else {
+								return Ok(result)
+							}
+						},
+						Err(e) => return Err(e)
+					}
+				)*
+
+				Ok(result)
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		#[cfg(feature="1.0")]
+		impl<L: std::borrow::Borrow<libloading::Library>> Instance<Dynamic<L, EGL1_0>> {
+			#[inline(always)]
+			/// Create an EGL instance using the symbols provided by the given library.
+			/// 
+			/// The most recent version of EGL provided by the given library is loaded.
+			/// You can check what version has actually been loaded using [`Instance::version`],
+			/// and/or convert to a more recent version using [`try_into`](TryInto::try_into).
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
+			pub unsafe fn latest_from_lib(lib: L) -> Result<Instance<Dynamic<L, EGL1_0>>, libloading::Error> {
+				Ok(Instance::new(Dynamic::<L, EGL1_0>::load(lib)?))
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		impl<L, V> Instance<Dynamic<L, V>> {
+			/// Cast the API.
+			#[inline(always)]
+			pub fn downcast<W>(&self) -> &Instance<Dynamic<L, W>> where Instance<Dynamic<L, V>>: Downcast<Instance<Dynamic<L, W>>> {
+				Downcast::downcast(self)
+			}
+		
+			/// Cast the API.
+			#[inline(always)]
+			pub fn upcast<W>(&self) -> Option<&Instance<Dynamic<L, W>>> where Instance<Dynamic<L, V>>: Upcast<Instance<Dynamic<L, W>>> {
+				Upcast::upcast(self)
 			}
 		}
 
@@ -1666,7 +1889,7 @@ macro_rules! api {
 		#[cfg(feature="dynamic")]
 		impl<L: std::borrow::Borrow<libloading::Library> + fmt::Debug, A> fmt::Debug for Dynamic<L, A> {
 			fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-				write!(f, "Dynamic({:?})", self.lib)
+				write!(f, "Dynamic({:?})", self.library())
 			}
 		}
 	};
@@ -1707,6 +1930,13 @@ macro_rules! api {
 		#[cfg(feature=$version)]
 		/// Latest available EGL version.
 		pub type Latest = $id;
+
+		$(
+			#[cfg(not(feature=$t_version))]
+		)*
+		#[cfg(feature=$version)]
+		/// Latest available EGL version.
+		pub const LATEST: Version = Version::$id;
 		
 		api!(@api_type ( ) $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* });
 		api!(@api_types ( $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* } ) $($t_id : $t_version { $(fn $t_name ($($t_arg : $t_atype ),* ) -> $t_rtype ;)* })*);
@@ -1719,6 +1949,13 @@ macro_rules! api {
 		#[cfg(feature=$version)]
 		/// Latest available EGL version.
 		pub type Latest = $id;
+
+		$(
+			#[cfg(not(feature=$t_version))]
+		)*
+		#[cfg(feature=$version)]
+		/// Latest available EGL version.
+		pub const LATEST: Version = Version::$id;
 		
 		api!(@api_type ( $($pred : $p_version { $(fn $p_name ($($p_arg : $p_atype ),* ) -> $p_rtype ;)* })* ) $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* });
 		api!(@api_types ( $($pred : $p_version { $(fn $p_name ($($p_arg : $p_atype ),* ) -> $p_rtype ;)* })* $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* } ) $($t_id : $t_version { $(fn $t_name ($($t_arg : $t_atype ),* ) -> $t_rtype ;)* })*);
@@ -1727,11 +1964,39 @@ macro_rules! api {
 		#[cfg(feature="dynamic")]
 		#[cfg(feature="1.0")]
 		/// Alias for dynamically linked instances with the latest handled version of EGL.
-		pub type DynamicInstance = Instance<Dynamic<libloading::Library, Latest>>;
+		pub type DynamicInstance<V = Latest> = Instance<Dynamic<libloading::Library, V>>;
 
 		#[cfg(feature="dynamic")]
 		#[cfg(feature="1.0")]
-		impl DynamicInstance {
+		impl DynamicInstance<EGL1_0> {
+			#[inline(always)]
+			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
+			/// 
+			/// See [`Library::new`](libloading::Library::new)
+			/// for more details on how the `filename` argument is used.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
+			pub unsafe fn minimal_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
+				let lib = libloading::Library::new(filename)?;
+				Ok(Self::new(Dynamic::<_, EGL1_0>::load(lib)?))
+			}
+
+			#[inline(always)]
+			/// Create an EGL instance by finding and loading the `libEGL.so` library.
+			/// 
+			/// This is equivalent to `DynamicInstance::minimal_from_filename("libEGL.so")`.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
+			pub unsafe fn load_minimal() -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
+				Self::minimal_from_filename("libEGL.so")
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		#[cfg(feature="1.0")]
+		impl DynamicInstance<Latest> {
 			#[inline(always)]
 			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
 			/// 
@@ -1741,8 +2006,11 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance, libloading::Error> {
-				Self::from_lib(libloading::Library::new(filename)?)
+			pub unsafe fn from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<Latest>, LoadError<libloading::Error>> {
+				match libloading::Library::new(filename) {
+					Ok(lib) => Self::from_lib(lib),
+					Err(e) => Err(LoadError::Library(e))
+				}
 			}
 
 			#[inline(always)]
@@ -1752,8 +2020,8 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
-			pub unsafe fn load() -> Result<DynamicInstance, libloading::Error> {
-				Self::from_lib(libloading::Library::new("libEGL.so")?)
+			pub unsafe fn load() -> Result<DynamicInstance<Latest>, LoadError<libloading::Error>> {
+				Self::from_filename("libEGL.so")
 			}
 		}
 	};
@@ -1776,6 +2044,23 @@ macro_rules! api {
 		/// Used by [`Dynamic`] to statically know the EGL API version provided by the library.
 		pub struct $id;
 
+		impl $id {
+			#[allow(unused_variables)]
+			unsafe fn load<L: std::borrow::Borrow<libloading::Library>>(raw: &mut RawDynamic<L>) -> Result<(), libloading::Error> {
+				let lib = raw.lib.borrow();
+
+				$(
+					let name = stringify!($name).as_bytes();
+					let symbol = lib.get::<unsafe extern "C" fn($($atype ),*) -> $rtype>(name)?;
+					let ptr = (&symbol.into_raw().into_raw()) as *const *mut _ as *const unsafe extern "C" fn($($atype ),*) -> $rtype;
+					assert!(!ptr.is_null());
+					raw.$name = std::mem::MaybeUninit::new(*ptr);
+				)*
+
+				Ok(())
+			}
+		}
+
 		$(
 			#[cfg(feature="dynamic")]
 			#[cfg(feature=$version)]
@@ -1783,7 +2068,7 @@ macro_rules! api {
 				$(
 					#[inline(always)]
 					unsafe fn $p_name(&self, $($p_arg : $p_atype),*) -> $p_rtype {
-						(self.$p_name.assume_init())($($p_arg),*)
+						(self.raw.$p_name.assume_init())($($p_arg),*)
 					}
 				)*
 			}
@@ -1795,30 +2080,81 @@ macro_rules! api {
 			$(
 				#[inline(always)]
 				unsafe fn $name(&self, $($arg : $atype),*) -> $rtype {
-					(self.$name.assume_init())($($arg),*)
+					(self.raw.$name.assume_init())($($arg),*)
 				}
 			)*
 		}
 
-		// $(
-		// 	#[cfg(feature="dynamic")]
-		// 	#[cfg(feature=$version)]
-		// 	impl<L> From<Dynamic<L, $id>> for Dynamic<L, $pred> {
-		// 		fn from(t: Dynamic<L, $id>) -> Self {
-		// 			let u = unsafe { std::ptr::read(&t as *const _ as *const Self) }; // safe because the internal representation of `Dynamic` is independant of the EGL version.
-		// 			std::mem::forget(t);
-		// 			u
-		// 		}
-		// 	}
+		$(
+			#[cfg(feature="dynamic")]
+			impl<L: std::borrow::Borrow<libloading::Library>> TryFrom<Dynamic<L, $pred>> for Dynamic<L, $id> {
+				type Error = Dynamic<L, $pred>;
 
-		// 	#[cfg(feature="dynamic")]
-		// 	#[cfg(feature=$version)]
-		// 	impl<'a, L> From<&'a Dynamic<L, $id>> for &'a Dynamic<L, $pred> {
-		// 		fn from(t: &'a Dynamic<L, $id>) -> Self {
-		// 			unsafe { std::mem::transmute(t) } // safe because the internal representation of `Dynamic` is independant of the EGL version.
-		// 		}
-		// 	}
-		// )*
+				fn try_from(other: Dynamic<L, $pred>) -> Result<Self, Dynamic<L, $pred>> {
+					if other.version() >= Version::$id {
+						Ok(Dynamic {
+							raw: other.raw,
+							_api_version: std::marker::PhantomData
+						})
+					} else {
+						Err(other)
+					}
+				}
+			}
+
+			#[cfg(feature="dynamic")]
+			impl<L: std::borrow::Borrow<libloading::Library>> From<Dynamic<L, $id>> for Dynamic<L, $pred> {
+				fn from(other: Dynamic<L, $id>) -> Self {
+					Dynamic {
+						raw: other.raw,
+						_api_version: std::marker::PhantomData
+					}
+				}
+			}
+
+			#[cfg(feature="dynamic")]
+			impl<L: std::borrow::Borrow<libloading::Library>> AsRef<Dynamic<L, $pred>> for Dynamic<L, $id> {
+				fn as_ref(&self) -> &Dynamic<L, $pred> {
+					unsafe { std::mem::transmute(self) } // this is safe because both types have the same repr.
+				}
+			}
+
+			#[cfg(feature="dynamic")]
+			impl<L: std::borrow::Borrow<libloading::Library>> Downcast<Dynamic<L, $pred>> for Dynamic<L, $id> {
+				fn downcast(&self) -> &Dynamic<L, $pred> {
+					unsafe { std::mem::transmute(self) } // this is safe because both types have the same repr.
+				}
+			}
+
+			#[cfg(feature="dynamic")]
+			impl<L: std::borrow::Borrow<libloading::Library>> Downcast<Instance<Dynamic<L, $pred>>> for Instance<Dynamic<L, $id>> {
+				fn downcast(&self) -> &Instance<Dynamic<L, $pred>> {
+					unsafe { std::mem::transmute(self) } // this is safe because both types have the same repr.
+				}
+			}
+
+			#[cfg(feature="dynamic")]
+			impl<L: std::borrow::Borrow<libloading::Library>> Upcast<Dynamic<L, $id>> for Dynamic<L, $pred> {
+				fn upcast(&self) -> Option<&Dynamic<L, $id>> {
+					if self.version() >= Version::$id {
+						Some(unsafe { std::mem::transmute(self) }) // this is safe because both types have the same repr.
+					} else {
+						None
+					}
+				}
+			}
+
+			#[cfg(feature="dynamic")]
+			impl<L: std::borrow::Borrow<libloading::Library>> Upcast<Instance<Dynamic<L, $id>>> for Instance<Dynamic<L, $pred>> {
+				fn upcast(&self) -> Option<&Instance<Dynamic<L, $id>>> {
+					if self.version() >= Version::$id {
+						Some(unsafe { std::mem::transmute(self) }) // this is safe because both types have the same repr.
+					} else {
+						None
+					}
+				}
+			}
+		)*
 
 		#[cfg(feature="dynamic")]
 		#[cfg(feature=$version)]
@@ -1830,27 +2166,20 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn new(lib: L) -> Result<Dynamic<L, $id>, libloading::Error> {
-				let mut result = Dynamic::unloaded(lib);
-
-				$(
-					$(
-						let name = stringify!($p_name).as_bytes();
-						let symbol = result.lib.borrow().get::<unsafe extern "C" fn($($p_atype ),*) -> $p_rtype>(name)?;
-						let ptr = (&symbol.into_raw().into_raw()) as *const *mut _ as *const unsafe extern "C" fn($($p_atype ),*) -> $p_rtype;
-						assert!(!ptr.is_null());
-						result.$p_name = std::mem::MaybeUninit::new(*ptr);
-					)*
-				)*
-				$(
-					let name = stringify!($name).as_bytes();
-					let symbol = result.lib.borrow().get::<unsafe extern "C" fn($($atype ),*) -> $rtype>(name)?;
-					let ptr = (&symbol.into_raw().into_raw()) as *const *mut _ as *const unsafe extern "C" fn($($atype ),*) -> $rtype;
-					assert!(!ptr.is_null());
-					result.$name = std::mem::MaybeUninit::new(*ptr);
-				)*
-
-				Ok(result)
+			pub unsafe fn new(lib: L) -> Result<Dynamic<L, $id>, LoadError<libloading::Error>> {
+				match Dynamic::<L, EGL1_0>::load(lib) {
+					Ok(dynamic) => {
+						let provided = dynamic.version();
+						match dynamic.try_into() {
+							Ok(t) => Ok(t),
+							Err(_) => Err(LoadError::InvalidVersion {
+								provided,
+								required: Version::$id
+							})
+						}
+					},
+					Err(e) => Err(LoadError::Library(e))
+				}
 			}
 		}
 
@@ -1862,7 +2191,7 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn from_lib(lib: L) -> Result<Instance<Dynamic<L, $id>>, libloading::Error> {
+			pub unsafe fn from_lib(lib: L) -> Result<Instance<Dynamic<L, $id>>, LoadError<libloading::Error>> {
 				Ok(Instance::new(Dynamic::<L, $id>::new(lib)?))
 			}
 		}

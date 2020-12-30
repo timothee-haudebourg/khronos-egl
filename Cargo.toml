@@ -11,7 +11,7 @@ keywords      = ["egl", "gl", "khronos", "opengl"]
 build         = "build.rs"
 
 [features]
-default = ["1.5"]
+default = ["1.5", "dynamic"]
 static = ["pkg-config"]
 dynamic = ["libloading"]
 nightly = []
@@ -42,3 +42,7 @@ required-features = ["static", "nightly"]
 [[example]]
 name = "wayland-dynamic"
 required-features = ["dynamic"]
+
+[[example]]
+name = "load-minimal"
+required-features = ["dynamic", "1.4"]
