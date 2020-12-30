@@ -11,7 +11,7 @@ keywords      = ["egl", "gl", "khronos", "opengl"]
 build         = "build.rs"
 
 [features]
-default = ["1.5", "dynamic"]
+default = ["1.5"]
 static = ["pkg-config"]
 dynamic = ["libloading"]
 nightly = []
