@@ -9,12 +9,13 @@ use egl::{
 };
 
 fn main() {
-	let minimal_egl = unsafe { Arc::new(egl::DynamicInstance::load_minimal().expect("unable to load libEGL.so")) };
+	let minimal_egl = unsafe { Arc::new(egl::DynamicInstance::minimal_from_filename("/nix/store/yac0mc9q0vfsax33gsnmj1cpvp8pcc4v-libglvnd-1.3.2/lib/libEGL.so").expect("unable to load libEGL.so")) };
 
 	println!("EGL version is {}", minimal_egl.version());
 
 	// Select the rendering API.
 	if let Some(egl1_2) = minimal_egl.upcast::<EGL1_2>() {
+		println!("selecting API");
 		 egl1_2.bind_api(egl::OPENGL_API).expect("unable to select OpenGL API");
 	}
 
@@ -32,9 +33,11 @@ fn main() {
 }
 
 fn foo_with_1_4<V: egl::api::EGL1_4>(_egl: &egl::Instance<V>) {
+	println!("with 1.4");
 	// do something that requires at least EGL 1.4.
 }
 
 fn foo_without_1_4<V>(_egl: &egl::Instance<V>) {
+	println!("without 1.4");
 	// do something without any specific EGL version (other that 1.0).
 }
