@@ -1840,6 +1840,13 @@ macro_rules! api {
 								return Ok(result)
 							}
 						},
+						Err(libloading::Error::DlSym(e)) => {
+							if Version::$id == Version::EGL1_0 {
+								return Err(e) // we require at least EGL 1.0.
+							} else {
+								return Ok(result)
+							}
+						},
 						Err(e) => return Err(e)
 					}
 				)*
