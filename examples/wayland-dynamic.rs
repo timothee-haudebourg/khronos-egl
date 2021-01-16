@@ -174,7 +174,7 @@ fn create_surface(
 }
 
 fn main() {
-	let egl = unsafe { Arc::new(egl::DynamicInstance::load().expect("unable to load libEGL.so")) };
+	let egl = unsafe { Arc::new(egl::DynamicInstance::<egl::EGL1_5>::load_required().expect("unable to load libEGL.so")) };
 
 	// Setup Open GL.
 	egl.bind_api(egl::OPENGL_API)

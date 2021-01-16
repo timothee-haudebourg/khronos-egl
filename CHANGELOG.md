@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Impl `Debug` for `Static`, `Dynamic` and `Instance`.
 - Add a `DynamicInstance` type alias for `Instance<Dynamic<libloading::Library>>` with helper functions.
 - Precise version selection.
-- Dynamic cast between versions with `Dynamic::load_minimal` and the `Upcast`/`Downcast` traits.
+- Dynamic cast between versions with `Dynamic::load`, `Dynamic::load_required` and the `Upcast`/`Downcast` traits.
 - `DynamicInstance::downcast` and `IDynamicInstance::upcast`.
 
 ## [3.0.0-beta]

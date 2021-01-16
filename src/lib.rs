@@ -1793,6 +1793,7 @@ macro_rules! api {
 				self.raw.library()
 			}
 
+			/// Returns the provided EGL version.
 			pub fn version(&self) -> Version {
 				self.raw.version()
 			}
@@ -1808,6 +1809,7 @@ macro_rules! api {
 
 		#[cfg(feature="dynamic")]
 		impl<L, A> Api for Dynamic<L, A> {
+			/// Returns the provided EGL version.
 			#[inline(always)]
 			fn version(&self) -> Version {
 				self.version()
@@ -1827,11 +1829,11 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn load(lib: L) -> Result<Dynamic<L, EGL1_0>, libloading::Error> {
+			pub unsafe fn load_from(lib: L) -> Result<Dynamic<L, EGL1_0>, libloading::Error> {
 				let mut result = Dynamic::unloaded(lib, Version::EGL1_0);
 
 				$(
-					match $id::load(&mut result.raw) {
+					match $id::load_from(&mut result.raw) {
 						Ok(()) => result.raw.set_version(Version::$id),
 						Err(libloading::Error::DlSymUnknown) => {
 							if Version::$id == Version::EGL1_0 {
@@ -1867,8 +1869,8 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn latest_from_lib(lib: L) -> Result<Instance<Dynamic<L, EGL1_0>>, libloading::Error> {
-				Ok(Instance::new(Dynamic::<L, EGL1_0>::load(lib)?))
+			pub unsafe fn load_from(lib: L) -> Result<Instance<Dynamic<L, EGL1_0>>, libloading::Error> {
+				Ok(Instance::new(Dynamic::<L, EGL1_0>::load_from(lib)?))
 			}
 		}
 
@@ -1984,51 +1986,20 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn minimal_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
+			pub unsafe fn load_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
 				let lib = libloading::Library::new(filename)?;
-				Ok(Self::new(Dynamic::<_, EGL1_0>::load(lib)?))
+				Self::load_from(lib)
 			}
 
 			#[inline(always)]
 			/// Create an EGL instance by finding and loading the `libEGL.so` library.
 			/// 
-			/// This is equivalent to `DynamicInstance::minimal_from_filename("libEGL.so")`.
+			/// This is equivalent to `DynamicInstance::load_from_filename("libEGL.so")`.
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
-			pub unsafe fn load_minimal() -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
-				Self::minimal_from_filename("libEGL.so")
-			}
-		}
-
-		#[cfg(feature="dynamic")]
-		#[cfg(feature="1.0")]
-		impl DynamicInstance<Latest> {
-			#[inline(always)]
-			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
-			/// 
-			/// This is equivalent to `DynamicInstance::from_lib(libloading::Library::new(filename)?)`.
-			/// See [`Library::new`](libloading::Library::new)
-			/// for more details on how the `filename` argument is used.
-			/// 
-			/// ## Safety
-			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<Latest>, LoadError<libloading::Error>> {
-				match libloading::Library::new(filename) {
-					Ok(lib) => Self::from_lib(lib),
-					Err(e) => Err(LoadError::Library(e))
-				}
-			}
-
-			#[inline(always)]
-			/// Create an EGL instance by finding and loading the `libEGL.so` library.
-			/// 
-			/// This is equivalent to `DynamicInstance::from_filename("libEGL.so")`.
-			/// 
-			/// ## Safety
-			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
-			pub unsafe fn load() -> Result<DynamicInstance<Latest>, LoadError<libloading::Error>> {
-				Self::from_filename("libEGL.so")
+			pub unsafe fn load() -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
+				Self::load_from_filename("libEGL.so")
 			}
 		}
 	};
@@ -2055,7 +2026,7 @@ macro_rules! api {
 		#[cfg(feature=$version)]
 		impl $id {
 			#[allow(unused_variables)]
-			unsafe fn load<L: std::borrow::Borrow<libloading::Library>>(raw: &mut RawDynamic<L>) -> Result<(), libloading::Error> {
+			unsafe fn load_from<L: std::borrow::Borrow<libloading::Library>>(raw: &mut RawDynamic<L>) -> Result<(), libloading::Error> {
 				let lib = raw.lib.borrow();
 
 				$(
@@ -2182,8 +2153,8 @@ macro_rules! api {
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn new(lib: L) -> Result<Dynamic<L, $id>, LoadError<libloading::Error>> {
-				match Dynamic::<L, EGL1_0>::load(lib) {
+			pub unsafe fn load_required(lib: L) -> Result<Dynamic<L, $id>, LoadError<libloading::Error>> {
+				match Dynamic::<L, EGL1_0>::load_from(lib) {
 					Ok(dynamic) => {
 						let provided = dynamic.version();
 						match dynamic.try_into() {
@@ -2204,11 +2175,44 @@ macro_rules! api {
 		impl<L: std::borrow::Borrow<libloading::Library>> Instance<Dynamic<L, $id>> {
 			#[inline(always)]
 			/// Create an EGL instance using the symbols provided by the given library.
+			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
-			pub unsafe fn from_lib(lib: L) -> Result<Instance<Dynamic<L, $id>>, LoadError<libloading::Error>> {
-				Ok(Instance::new(Dynamic::<L, $id>::new(lib)?))
+			pub unsafe fn load_required_from(lib: L) -> Result<Instance<Dynamic<L, $id>>, LoadError<libloading::Error>> {
+				Ok(Instance::new(Dynamic::<L, $id>::load_required(lib)?))
+			}
+		}
+
+		#[cfg(feature="dynamic")]
+		#[cfg(feature=$version)]
+		impl DynamicInstance<$id> {
+			#[inline(always)]
+			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
+			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
+			/// 
+			/// See [`Library::new`](libloading::Library::new)
+			/// for more details on how the `filename` argument is used.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
+			pub unsafe fn load_required_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<$id>, LoadError<libloading::Error>> {
+				match libloading::Library::new(filename) {
+					Ok(lib) => Self::load_required_from(lib),
+					Err(e) => Err(LoadError::Library(e))
+				}
+			}
+
+			#[inline(always)]
+			/// Create an EGL instance by finding and loading the `libEGL.so` library.
+			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
+			/// 
+			/// This is equivalent to `DynamicInstance::load_required_from_filename("libEGL.so")`.
+			/// 
+			/// ## Safety
+			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
+			pub unsafe fn load_required() -> Result<DynamicInstance<$id>, LoadError<libloading::Error>> {
+				Self::load_required_from_filename("libEGL.so")
 			}
 		}
 	}
