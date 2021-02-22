@@ -7,4 +7,5 @@ pkgs.mkShell {
 		pkgs.pkg-config
 		pkgs.wayland
 	];
+	LD_LIBRARY_PATH="${pkgs.libGL}/lib";
 }

@@ -6,4 +6,5 @@ pkgs.mkShell {
 		pkgs.libGL
 		pkgs.pkg-config
 	];
+	LD_LIBRARY_PATH="${pkgs.libGL}/lib";
 }
