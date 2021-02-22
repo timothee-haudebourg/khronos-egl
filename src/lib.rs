@@ -5,7 +5,7 @@
 //! ## Usage
 //! 
 //! You can access the EGL API using an [`Instance`]
-//! object defined by either statically linking with `libEGL.so` at compile time,
+//! object defined by either statically linking with `libEGL.so.1` at compile time,
 //! or dynamically loading the EGL library at runtime.
 //! 
 //! ### Static linking
@@ -87,17 +87,17 @@
 //! 
 //! ```
 //! # extern crate khronos_egl as egl;
-//! let lib = libloading::Library::new("libEGL.so").expect("unable to find libEGL.so");
-//! let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so") };
+//! let lib = libloading::Library::new("libEGL.so.1").expect("unable to find libEGL.so.1");
+//! let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so.1") };
 //! ```
 //! 
-//! Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so`.
-//! This will return a `DynamicInstance<egl::EGL1_4>`, however in that case where `libEGL.so` provides a more recent version of EGL,
+//! Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so.1`.
+//! This will return a `DynamicInstance<egl::EGL1_4>`, however in that case where `libEGL.so.1` provides a more recent version of EGL,
 //! you can still upcast ths instance to provide version specific features:
 //! ```
 //! # extern crate khronos_egl as egl;
-//! # let lib = libloading::Library::new("libEGL.so").expect("unable to find libEGL.so");
-//! # let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so") };
+//! # let lib = libloading::Library::new("libEGL.so.1").expect("unable to find libEGL.so.1");
+//! # let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so.1") };
 //! match egl.upcast::<egl::EGL1_5>() {
 //! 	Some(egl1_5) => {
 //! 		// do something with EGL 1.5
@@ -1981,14 +1981,14 @@ macro_rules! api {
 			}
 
 			#[inline(always)]
-			/// Create an EGL instance by finding and loading the `libEGL.so` library.
+			/// Create an EGL instance by finding and loading the `libEGL.so.1` library.
 			/// 
-			/// This is equivalent to `DynamicInstance::load_from_filename("libEGL.so")`.
+			/// This is equivalent to `DynamicInstance::load_from_filename("libEGL.so.1")`.
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
 			pub unsafe fn load() -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
-				Self::load_from_filename("libEGL.so")
+				Self::load_from_filename("libEGL.so.1")
 			}
 		}
 	};
@@ -2193,15 +2193,15 @@ macro_rules! api {
 			}
 
 			#[inline(always)]
-			/// Create an EGL instance by finding and loading the `libEGL.so` library.
+			/// Create an EGL instance by finding and loading the `libEGL.so.1` library.
 			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
 			/// 
-			/// This is equivalent to `DynamicInstance::load_required_from_filename("libEGL.so")`.
+			/// This is equivalent to `DynamicInstance::load_required_from_filename("libEGL.so.1")`.
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
 			pub unsafe fn load_required() -> Result<DynamicInstance<$id>, LoadError<libloading::Error>> {
-				Self::load_required_from_filename("libEGL.so")
+				Self::load_required_from_filename("libEGL.so.1")
 			}
 		}
 	}

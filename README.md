@@ -13,7 +13,7 @@ which is left unmaintained.
 ## Usage
 
 You can access the EGL API using an [`Instance`](https://docs.rs/khronos-egl/latest/khronos-egl/struct.Instance.html)
-object defined by either statically linking with `libEGL.so` at compile time,
+object defined by either statically linking with `libEGL.so.1` at compile time,
 or dynamically loading the EGL library at runtime.
 
 ### Static linking
@@ -93,12 +93,12 @@ necessary to find the EGL library at runtime.
 You can then load the EGL API into a `Instance<Dynamic<libloading::Library>>` as follows:
 
 ```rust
-let lib = libloading::Library::new("libEGL.so").expect("unable to find libEGL.so");
-let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so") };
+let lib = libloading::Library::new("libEGL.so.1").expect("unable to find libEGL.so.1");
+let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so.1") };
 ```
 
-Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so`.
-This will return a `DynamicInstance<egl::EGL1_4>`, however in that case where `libEGL.so` provides a more recent version of EGL,
+Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so.1`.
+This will return a `DynamicInstance<egl::EGL1_4>`, however in that case where `libEGL.so.1` provides a more recent version of EGL,
 you can still upcast ths instance to provide version specific features:
 ```rust
 match egl.upcast::<egl::EGL1_5>() {

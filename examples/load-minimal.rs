@@ -9,7 +9,7 @@ use egl::{
 };
 
 fn main() {
-	let minimal_egl = unsafe { Arc::new(egl::DynamicInstance::load().expect("unable to load libEGL.so")) };
+	let minimal_egl = unsafe { Arc::new(egl::DynamicInstance::load().expect("unable to load libEGL.so.1")) };
 
 	println!("EGL version is {}", minimal_egl.version());
 
