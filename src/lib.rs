@@ -68,12 +68,14 @@
 //! you can combine the `nightly` and `static` features so that this crate
 //! can provide a static `Instance`, called `API` that can then be accessed everywhere.
 //! 
-//! ```ignore
+//! ```
+//! # extern crate khronos_egl as egl;
 //! use egl::API as egl;
 //! ```
 //! 
 //! ### Dynamic Linking
 //! 
+//! Dynamic linking allows your application to accept multiple versions of EGL and be more flexible.
 //! You must enable dynamic linking using the `dynamic` feature in your `Cargo.toml`:
 //! ```toml
 //! khronos-egl = { version = ..., features = ["dynamic"] }
@@ -83,9 +85,27 @@
 //! necessary to find the EGL library at runtime.
 //! You can then load the EGL API into a `Instance<Dynamic<libloading::Library>>` as follows:
 //! 
-//! ```ignore
+//! ```
+//! # extern crate khronos_egl as egl;
 //! let lib = libloading::Library::new("libEGL.so").expect("unable to find libEGL.so");
-//! let egl = unsafe { egl::Instance::from_lib(lib).expect("unable to load libEGL.so") };
+//! let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so") };
+//! ```
+//! 
+//! Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so`.
+//! This will return a `DynamicInstance<egl::EGL1_4>`, however in that case where `libEGL.so` provides a more recent version of EGL,
+//! you can still upcast ths instance to provide version specific features:
+//! ```
+//! # extern crate khronos_egl as egl;
+//! # let lib = libloading::Library::new("libEGL.so").expect("unable to find libEGL.so");
+//! # let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so") };
+//! match egl.upcast::<egl::EGL1_5>() {
+//! 	Some(egl1_5) => {
+//! 		// do something with EGL 1.5
+//! 	}
+//! 	None => {
+//! 		// do something with EGL 1.4 instead.
+//! 	}
+//! };
 //! ```
 //! 
 //! ## Troubleshooting
@@ -222,7 +242,7 @@ extern {}
 // EGL 1.0
 // ------------------------------------------------------------------------------------------------
 
-#[cfg(feature = "1.0")]
+#[cfg(feature = "1_0")]
 mod egl1_0 {
 	use super::*;
 
@@ -1049,14 +1069,14 @@ mod egl1_0 {
 	}
 }
 
-#[cfg(feature = "1.0")]
+#[cfg(feature = "1_0")]
 pub use egl1_0::*;
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.1
 // ------------------------------------------------------------------------------------------------
 
-#[cfg(feature = "1.1")]
+#[cfg(feature = "1_1")]
 mod egl1_1 {
 	use super::*;
 
@@ -1123,14 +1143,14 @@ mod egl1_1 {
 	}
 }
 
-#[cfg(feature = "1.1")]
+#[cfg(feature = "1_1")]
 pub use egl1_1::*;
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.2
 // ------------------------------------------------------------------------------------------------
 
-#[cfg(feature = "1.2")]
+#[cfg(feature = "1_2")]
 mod egl1_2 {
 	use super::*;
 
@@ -1246,14 +1266,14 @@ mod egl1_2 {
 	}
 }
 
-#[cfg(feature = "1.2")]
+#[cfg(feature = "1_2")]
 pub use egl1_2::*;
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.3
 // ------------------------------------------------------------------------------------------------
 
-#[cfg(feature = "1.3")]
+#[cfg(feature = "1_3")]
 mod egl1_3 {
 	use super::*;
 
@@ -1271,14 +1291,14 @@ mod egl1_3 {
 	pub const VG_COLORSPACE_LINEAR_BIT: Int = 0x0020;
 }
 
-#[cfg(feature = "1.3")]
+#[cfg(feature = "1_3")]
 pub use egl1_3::*;
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.4
 // ------------------------------------------------------------------------------------------------
 
-#[cfg(feature = "1.4")]
+#[cfg(feature = "1_4")]
 mod egl1_4 {
 	use super::*;
 
@@ -1307,14 +1327,14 @@ mod egl1_4 {
 	}
 }
 
-#[cfg(feature = "1.4")]
+#[cfg(feature = "1_4")]
 pub use egl1_4::*;
 
 // ------------------------------------------------------------------------------------------------
 // EGL 1.5
 // ------------------------------------------------------------------------------------------------
 
-#[cfg(feature = "1.5")]
+#[cfg(feature = "1_5")]
 mod egl1_5 {
 	use super::*;
 
@@ -1581,39 +1601,8 @@ mod egl1_5 {
 	}
 }
 
-#[cfg(feature = "1.5")]
+#[cfg(feature = "1_5")]
 pub use egl1_5::*;
-
-// #[cfg(feature = "dynamic")]
-// #[cfg(not(feature = "1.5"))]
-// #[cfg(not(feature = "1.4"))]
-// #[cfg(not(feature = "1.3"))]
-// #[cfg(not(feature = "1.2"))]
-// #[cfg(not(feature = "1.1"))]
-// #[cfg(feature = "1.0")]
-// pub type Latest = EGL1_0;
-
-// #[cfg(feature = "dynamic")]
-// #[cfg(not(feature = "1.5"))]
-// #[cfg(not(feature = "1.4"))]
-// #[cfg(not(feature = "1.3"))]
-// #[cfg(not(feature = "1.2"))]
-// #[cfg(feature = "1.1")]
-// pub type Latest = EGL1_1;
-
-// #[cfg(feature = "dynamic")]
-// #[cfg(not(feature = "1.5"))]
-// #[cfg(not(feature = "1.4"))]
-// #[cfg(not(feature = "1.3"))]
-// #[cfg(feature = "1.2")]
-// pub type Latest = EGL1_2;
-
-// #[cfg(feature = "dynamic")]
-// #[cfg(not(feature = "1.5"))]
-// #[cfg(not(feature = "1.4"))]
-// #[cfg(not(feature = "1.3"))]
-// #[cfg(feature = "1.2")]
-// pub type Latest = EGL1_2;
 
 // -------------------------------------------------------------------------------------------------
 // FFI
@@ -1817,7 +1806,7 @@ macro_rules! api {
 		}
 
 		#[cfg(feature="dynamic")]
-		#[cfg(feature="1.0")]
+		#[cfg(feature="1_0")]
 		impl<L: std::borrow::Borrow<libloading::Library>> Dynamic<L, EGL1_0> {
 			#[inline]
 			/// Load the EGL API symbols from the given library.
@@ -1858,7 +1847,7 @@ macro_rules! api {
 		}
 
 		#[cfg(feature="dynamic")]
-		#[cfg(feature="1.0")]
+		#[cfg(feature="1_0")]
 		impl<L: std::borrow::Borrow<libloading::Library>> Instance<Dynamic<L, EGL1_0>> {
 			#[inline(always)]
 			/// Create an EGL instance using the symbols provided by the given library.
@@ -1971,12 +1960,12 @@ macro_rules! api {
 	};
 	(@api_types ( $($pred:ident : $p_version:literal { $(fn $p_name:ident ($($p_arg:ident : $p_atype:ty ),* ) -> $p_rtype:ty ;)* })+ ) ) => {
 		#[cfg(feature="dynamic")]
-		#[cfg(feature="1.0")]
+		#[cfg(feature="1_0")]
 		/// Alias for dynamically linked instances with the latest handled version of EGL.
 		pub type DynamicInstance<V = Latest> = Instance<Dynamic<libloading::Library, V>>;
 
 		#[cfg(feature="dynamic")]
-		#[cfg(feature="1.0")]
+		#[cfg(feature="1_0")]
 		impl DynamicInstance<EGL1_0> {
 			#[inline(always)]
 			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
@@ -2219,7 +2208,7 @@ macro_rules! api {
 }
 
 api! {
-	EGL1_0 : "1.0" {
+	EGL1_0 : "1_0" {
 		fn eglChooseConfig(
 			display: EGLDisplay,
 			attrib_list: *const Int,
@@ -2300,7 +2289,7 @@ api! {
 		fn eglWaitNative(engine: Int) -> Boolean;
 	},
 	
-	EGL1_1 : "1.1" {
+	EGL1_1 : "1_1" {
 		fn eglBindTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
 		fn eglReleaseTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
 		fn eglSurfaceAttrib(
@@ -2312,7 +2301,7 @@ api! {
 		fn eglSwapInterval(display: EGLDisplay, interval: Int) -> Boolean;
 	},
 
-	EGL1_2 : "1.2" {
+	EGL1_2 : "1_2" {
 		fn eglBindAPI(api: Enum) -> Boolean;
 		fn eglQueryAPI() -> Enum;
 		fn eglCreatePbufferFromClientBuffer(
@@ -2326,15 +2315,15 @@ api! {
 		fn eglWaitClient() -> Boolean;
 	},
 
-	EGL1_3 : "1.3" {
+	EGL1_3 : "1_3" {
 		// nothing.
 	},
 
-	EGL1_4 : "1.4" {
+	EGL1_4 : "1_4" {
 		fn eglGetCurrentContext() -> EGLContext;
 	},
 
-	EGL1_5 : "1.5" {
+	EGL1_5 : "1_5" {
 		fn eglCreateSync(display: EGLDisplay, type_: Enum, attrib_list: *const Attrib) -> EGLSync;
 		fn eglDestroySync(display: EGLDisplay, sync: EGLSync) -> Boolean;
 		fn eglClientWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int, timeout: Time) -> Int;
