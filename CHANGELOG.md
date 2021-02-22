@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished]
+## [3.0.0]
 ### Changed
 - Impl `Debug` for `Static`, `Dynamic` and `Instance`.
 - Add a `DynamicInstance` type alias for `Instance<Dynamic<libloading::Library>>` with helper functions.

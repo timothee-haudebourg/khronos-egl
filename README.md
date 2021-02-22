@@ -82,6 +82,7 @@ use egl::API as egl;
 
 ### Dynamic Linking
 
+Dynamic linking allows your application to accept multiple versions of EGL and be more flexible.
 You must enable dynamic linking using the `dynamic` feature in your `Cargo.toml`:
 ```toml
 khronos-egl = { version = ..., features = ["dynamic"] }
@@ -93,7 +94,21 @@ You can then load the EGL API into a `Instance<Dynamic<libloading::Library>>` as
 
 ```rust
 let lib = libloading::Library::new("libEGL.so").expect("unable to find libEGL.so");
-let egl = unsafe { egl::Instance::from_lib(lib).expect("unable to load libEGL.so") };
+let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so") };
+```
+
+Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so`.
+This will return a `DynamicInstance<egl::EGL1_4>`, however in that case where `libEGL.so` provides a more recent version of EGL,
+you can still upcast ths instance to provide version specific features:
+```rust
+match egl.upcast::<egl::EGL1_5>() {
+	Some(egl1_5) => {
+		// do something with EGL 1.5
+	}
+	None => {
+		// do something with EGL 1.4 instead.
+	}
+};
 ```
 
 ### NixOS
