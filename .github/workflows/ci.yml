@@ -1,0 +1,43 @@
+name: ci
+
+on: [pull_request, push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        channel: [stable, nightly]
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/cargo@v1
+      - name: Select Rust channel
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.channel }}
+          override: true
+      - name: Rust Version Info
+        run: rustc --version && cargo --version
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-${{ matrix.channel }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-${{ matrix.channel }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ matrix.channel }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install EGL & Wayland
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y -qq libegl1-mesa-dev libwayland-dev
+      - name: Cargo build
+        run: cargo build --all-features --all-targets
+      - name: Run load-minimal
+        run: cargo run --example load-minimal --features "dynamic 1_4"
