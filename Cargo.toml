@@ -13,6 +13,7 @@ build         = "build.rs"
 [features]
 default = ["1_5"]
 static = ["pkg-config"]
+no-pkg-config = []
 dynamic = ["libloading"]
 nightly = []
 "1_5" = ["1_4"]
