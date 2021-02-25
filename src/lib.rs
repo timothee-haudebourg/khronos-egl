@@ -1973,6 +1973,9 @@ macro_rules! api {
 			/// See [`Library::new`](libloading::Library::new)
 			/// for more details on how the `filename` argument is used.
 			/// 
+			/// On Linux plateforms, the library is loaded with the `RTLD_NODELETE` flag.
+			/// See [#14](https://github.com/timothee-haudebourg/khronos-egl/issues/14) for more details.
+			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
@@ -2189,6 +2192,9 @@ macro_rules! api {
 			/// 
 			/// See [`Library::new`](libloading::Library::new)
 			/// for more details on how the `filename` argument is used.
+			/// 
+			/// On Linux plateforms, the library is loaded with the `RTLD_NODELETE` flag.
+			/// See [#14](https://github.com/timothee-haudebourg/khronos-egl/issues/14) for more details.
 			/// 
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
