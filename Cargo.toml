@@ -14,7 +14,6 @@ build         = "build.rs"
 default = ["1_5"]
 static = ["pkg-config"]
 dynamic = ["libloading"]
-nightly = []
 "1_5" = ["1_4"]
 "1_4" = ["1_3"]
 "1_3" = ["1_2"]
@@ -24,7 +23,7 @@ nightly = []
 
 [dependencies]
 libc = "^0.2"
-libloading = { version = "^0.6", optional = true }
+libloading = { version = "^0.7", optional = true }
 
 [build-dependencies]
 pkg-config = { version = "^0.3", optional = true }
@@ -37,7 +36,7 @@ wayland-egl = { version = "^0.28" }
 
 [[example]]
 name = "wayland-static"
-required-features = ["static", "nightly"]
+required-features = ["static"]
 
 [[example]]
 name = "wayland-dynamic"
