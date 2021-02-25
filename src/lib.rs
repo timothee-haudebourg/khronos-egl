@@ -1976,6 +1976,13 @@ macro_rules! api {
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
+				#[cfg(target_os = "linux")]
+				let lib: libloading::Library = {
+					// On Linux, load library with `RTLD_NOW | RTLD_NODELETE` to fix a SIGSEGV
+					// See https://github.com/timothee-haudebourg/khronos-egl/issues/14 for more details.
+					libloading::os::unix::Library::open(Some(filename), 0x2 | 0x1000)?.into()
+				};
+				#[cfg(not(target_os = "linux"))]
 				let lib = libloading::Library::new(filename)?;
 				Self::load_from(lib)
 			}
@@ -2186,10 +2193,15 @@ macro_rules! api {
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_required_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<$id>, LoadError<libloading::Error>> {
-				match libloading::Library::new(filename) {
-					Ok(lib) => Self::load_required_from(lib),
-					Err(e) => Err(LoadError::Library(e))
-				}
+				#[cfg(target_os = "linux")]
+				let lib: libloading::Library = {
+					// On Linux, load library with `RTLD_NOW | RTLD_NODELETE` to fix a SIGSEGV
+					// See https://github.com/timothee-haudebourg/khronos-egl/issues/14 for more details.
+					libloading::os::unix::Library::open(Some(filename), 0x2 | 0x1000).map_err(LoadError::Library)?.into()
+				};
+				#[cfg(not(target_os = "linux"))]
+				let lib = libloading::Library::new(filename).map_err(LoadError::Library)?;
+				Self::load_required_from(lib)
 			}
 
 			#[inline(always)]
