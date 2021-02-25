@@ -25,6 +25,13 @@ khronos-egl = { version = ..., features = ["static"] }
 
 This will add a dependency to the [`pkg-config`](https://crates.io/crates/pkg-config) crate,
 necessary to find the EGL library at compile time.
+
+If you wish to disable linking EGL in this crate, and provide linking in
+your crate instead, enable the `no-pkg-config` feature.
+```toml
+khronos-egl = {version = ..., features = ["static", "no-pkg-config"]}
+```
+
 Here is a simple example showing how to use this library to create an EGL context when static linking is enabled.
 
 ```rust
