@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished]
+### Changed
+- One Linux, use the `RTLD_NODELETE` when loading the EGL library in `load_required_from_filename` and `load_from_filename`.
+
 ## [3.0.1]
 ### Changed
 - Load `libEGL.so.1` by default instead of `libEGL.so`.
