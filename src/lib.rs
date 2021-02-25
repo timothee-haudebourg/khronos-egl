@@ -1,65 +1,65 @@
 //! This crate provides a binding for the Khronos EGL 1.5 API.
 //! It was originally a fork of the [egl](https://crates.io/crates/egl) crate,
 //! which is left unmaintained.
-//! 
+//!
 //! ## Usage
-//! 
+//!
 //! You can access the EGL API using an [`Instance`]
 //! object defined by either statically linking with `libEGL.so.1` at compile time,
 //! or dynamically loading the EGL library at runtime.
-//! 
+//!
 //! ### Static linking
-//! 
+//!
 //! You must enable static linking using the `static` feature in your `Cargo.toml`:
 //! ```toml
 //! khronos-egl = { version = ..., features = ["static"] }
 //! ```
-//! 
+//!
 //! This will add a dependency to the [`pkg-config`](https://crates.io/crates/pkg-config) crate,
 //! necessary to find the EGL library at compile time.
 //! Here is a simple example showing how to use this library to create an EGL context when static linking is enabled.
-//! 
+//!
 //! ```rust
 //! extern crate khronos_egl as egl;
-//! 
+//!
 //! fn main() -> Result<(), egl::Error> {
 //! 	// Create an EGL API instance.
 //! 	// The `egl::Static` API implementation is only available when the `static` feature is enabled.
 //! 	let egl = egl::Instance::new(egl::Static);
-//! 
+//!
 //! 	let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
 //! 	let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
 //! 	egl.initialize(display)?;
-//! 
+//!
 //! 	let attributes = [
 //! 		egl::RED_SIZE, 8,
 //! 		egl::GREEN_SIZE, 8,
 //! 		egl::BLUE_SIZE, 8,
 //! 		egl::NONE
 //! 	];
-//! 
+//!
 //! 	let config = egl.choose_first_config(display, &attributes)?.expect("unable to find an appropriate ELG configuration");
-//! 
+//!
 //! 	let context_attributes = [
 //! 		egl::CONTEXT_MAJOR_VERSION, 4,
 //! 		egl::CONTEXT_MINOR_VERSION, 0,
 //! 		egl::CONTEXT_OPENGL_PROFILE_MASK, egl::CONTEXT_OPENGL_CORE_PROFILE_BIT,
 //! 		egl::NONE
 //! 	];
-//! 
+//!
 //! 	egl.create_context(display, config, None, &context_attributes);
-//! 
+//!
 //! 	Ok(())
 //! }
 //! ```
-//! 
+//!
 //! The creation of a `Display` instance is not detailed here since it depends on your display server.
 //! It is created using the `get_display` function with a pointer to the display server connection handle.
 //! For instance, if you are using the [wayland-client](https://crates.io/crates/wayland-client) crate,
 //! you can get this pointer using the `Display::get_display_ptr` method.
-//! 
+//!
 //! #### Static API Instance
-//! 
+//!
 //! It may be bothering in some applications to pass the `Instance` to every fonction that needs to call the EGL API.
 //! One workaround would be to define a static `Instance`,
 //! which should be possible to define at compile time using static linking.
@@ -67,30 +67,30 @@
 //! With the nightly compiler,
 //! you can combine the `nightly` and `static` features so that this crate
 //! can provide a static `Instance`, called `API` that can then be accessed everywhere.
-//! 
+//!
 //! ```
 //! # extern crate khronos_egl as egl;
 //! use egl::API as egl;
 //! ```
-//! 
+//!
 //! ### Dynamic Linking
-//! 
+//!
 //! Dynamic linking allows your application to accept multiple versions of EGL and be more flexible.
 //! You must enable dynamic linking using the `dynamic` feature in your `Cargo.toml`:
 //! ```toml
 //! khronos-egl = { version = ..., features = ["dynamic"] }
 //! ```
-//! 
+//!
 //! This will add a dependency to the [`libloading`](https://crates.io/crates/libloading) crate,
 //! necessary to find the EGL library at runtime.
 //! You can then load the EGL API into a `Instance<Dynamic<libloading::Library>>` as follows:
-//! 
+//!
 //! ```
 //! # extern crate khronos_egl as egl;
 //! let lib = libloading::Library::new("libEGL.so.1").expect("unable to find libEGL.so.1");
 //! let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so.1") };
 //! ```
-//! 
+//!
 //! Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so.1`.
 //! This will return a `DynamicInstance<egl::EGL1_4>`, however in that case where `libEGL.so.1` provides a more recent version of EGL,
 //! you can still upcast ths instance to provide version specific features:
@@ -107,16 +107,16 @@
 //! 	}
 //! };
 //! ```
-//! 
+//!
 //! ## Troubleshooting
-//! 
+//!
 //! ### Static Linking with OpenGL ES
-//! 
+//!
 //! When using OpenGL ES with `khronos-egl` with the `static` feature,
 //! it is necessary to place a dummy extern at the top of your application which links libEGL first, then GLESv1/2.
 //! This is because libEGL provides symbols required by GLESv1/2.
 //! Here's how to work around this:
-//! 
+//!
 //! ```
 //! ##[link(name = "EGL")]
 //! ##[link(name = "GLESv2")]
@@ -124,7 +124,6 @@
 //! ```
 #![allow(non_upper_case_globals)]
 #![allow(non_snake_case)]
-#![cfg_attr(feature = "nightly", feature(const_fn))]
 
 extern crate libc;
 
@@ -163,7 +162,7 @@ impl<T> Upcast<T> for T {
 }
 
 /// EGL API instance.
-/// 
+///
 /// An instance wraps an interface to the EGL API and provide
 /// rust-friendly access to it.
 pub struct Instance<T> {
@@ -200,17 +199,8 @@ impl<T> Instance<T> {
 }
 
 impl<T> Instance<T> {
-	#[cfg(feature="nightly")]
 	#[inline(always)]
 	pub const fn new(api: T) -> Instance<T> {
-		Instance {
-			api
-		}
-	}
-
-	#[cfg(not(feature="nightly"))]
-	#[inline(always)]
-	pub fn new(api: T) -> Instance<T> {
 		Instance {
 			api
 		}
@@ -799,9 +789,9 @@ mod egl1_0 {
 		}
 
 		/// Return the number of all frame buffer configurations.
-		/// 
+		///
 		/// You can use it to setup the correct capacity for the configurations buffer in [`get_configs`](Self::get_configs).
-		/// 
+		///
 		/// ## Example
 		/// ```
 		/// # extern crate khronos_egl as egl;
@@ -830,11 +820,11 @@ mod egl1_0 {
 		}
 
 		/// Get the list of all EGL frame buffer configurations for a display.
-		/// 
+		///
 		/// The configurations are added to the `configs` buffer, up to the buffer's capacity.
 		/// You can use [`get_config_count`](Self::get_config_count) to get the total number of available frame buffer configurations,
 		/// and setup the buffer's capacity accordingly.
-		/// 
+		///
 		/// ## Example
 		/// ```
 		/// # extern crate khronos_egl as egl;
@@ -1634,11 +1624,11 @@ macro_rules! api {
 
 			api!(@api_traits () () $($id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* })*);
 		}
-		
+
 		#[cfg(feature="static")]
 		mod ffi {
 			use libc::{c_char, c_void};
-			
+
 			use super::{
 				Attrib, Boolean, EGLClientBuffer, EGLConfig, EGLContext, EGLDisplay, EGLImage, EGLSurface,
 				EGLSync, Enum, Int, NativeDisplayType, NativePixmapType, NativeWindowType, Time,
@@ -1656,7 +1646,7 @@ macro_rules! api {
 
 		#[cfg(feature="static")]
 		/// Static EGL API interface.
-		/// 
+		///
 		/// This type is only available when the `static` feature is enabled,
 		/// by statically linking the EGL library at compile time.
 		#[derive(Copy, Clone, Debug)]
@@ -1671,7 +1661,6 @@ macro_rules! api {
 		}
 
 		#[cfg(feature="static")]
-		#[cfg(feature="nightly")]
 		pub static API: Instance<Static> = Instance::new(Static);
 
 		#[cfg(feature="dynamic")]
@@ -1763,10 +1752,10 @@ macro_rules! api {
 
 		#[cfg(feature="dynamic")]
 		/// Dynamic EGL API interface.
-		/// 
+		///
 		/// The first type parameter is the type of the underlying library handle.
 		/// The second `Dynamic` type parameter gives the EGL API version provided by the library.
-		/// 
+		///
 		/// This type is only available when the `dynamic` feature is enabled.
 		/// In most cases, you may prefer to directly use the `DynamicInstance` type.
 		pub struct Dynamic<L, A> {
@@ -1810,12 +1799,12 @@ macro_rules! api {
 		impl<L: std::borrow::Borrow<libloading::Library>> Dynamic<L, EGL1_0> {
 			#[inline]
 			/// Load the EGL API symbols from the given library.
-			/// 
+			///
 			/// This will load the most recent API provided by the library,
 			/// which is at least EGL 1.0.
 			/// You can check what version has actually been loaded using [`Dynamic::version`],
 			/// and/or convert to a more recent version using [`try_into`](TryInto::try_into).
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_from(lib: L) -> Result<Dynamic<L, EGL1_0>, libloading::Error> {
@@ -1851,11 +1840,11 @@ macro_rules! api {
 		impl<L: std::borrow::Borrow<libloading::Library>> Instance<Dynamic<L, EGL1_0>> {
 			#[inline(always)]
 			/// Create an EGL instance using the symbols provided by the given library.
-			/// 
+			///
 			/// The most recent version of EGL provided by the given library is loaded.
 			/// You can check what version has actually been loaded using [`Instance::version`],
 			/// and/or convert to a more recent version using [`try_into`](TryInto::try_into).
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_from(lib: L) -> Result<Instance<Dynamic<L, EGL1_0>>, libloading::Error> {
@@ -1870,7 +1859,7 @@ macro_rules! api {
 			pub fn downcast<W>(&self) -> &Instance<Dynamic<L, W>> where Instance<Dynamic<L, V>>: Downcast<Instance<Dynamic<L, W>>> {
 				Downcast::downcast(self)
 			}
-		
+
 			/// Cast the API.
 			#[inline(always)]
 			pub fn upcast<W>(&self) -> Option<&Instance<Dynamic<L, W>>> where Instance<Dynamic<L, V>>: Upcast<Instance<Dynamic<L, W>>> {
@@ -1904,9 +1893,9 @@ macro_rules! api {
 	};
 	(@api_trait ( $($pred:ident : $p_version:literal)* ) ( $($deps:tt)* ) $id:ident : $version:literal { $(fn $name:ident ($($arg:ident : $atype:ty ),* ) -> $rtype:ty ;)* }) => {
 		/// EGL API interface.
-		/// 
+		///
 		/// An implementation of this trait can be used to create an [`Instance`].
-		/// 
+		///
 		/// This crate provides two implemntation of this trait:
 		///  - [`Static`] which is available with the `static` feature enabled,
 		///    defined by statically linking to the EGL library at compile time.
@@ -1935,7 +1924,7 @@ macro_rules! api {
 		#[cfg(feature=$version)]
 		/// Latest available EGL version.
 		pub const LATEST: Version = Version::$id;
-		
+
 		api!(@api_type ( ) $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* });
 		api!(@api_types ( $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* } ) $($t_id : $t_version { $(fn $t_name ($($t_arg : $t_atype ),* ) -> $t_rtype ;)* })*);
 	};
@@ -1954,7 +1943,7 @@ macro_rules! api {
 		#[cfg(feature=$version)]
 		/// Latest available EGL version.
 		pub const LATEST: Version = Version::$id;
-		
+
 		api!(@api_type ( $($pred : $p_version { $(fn $p_name ($($p_arg : $p_atype ),* ) -> $p_rtype ;)* })* ) $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* });
 		api!(@api_types ( $($pred : $p_version { $(fn $p_name ($($p_arg : $p_atype ),* ) -> $p_rtype ;)* })* $id : $version { $(fn $name ($($arg : $atype ),* ) -> $rtype ;)* } ) $($t_id : $t_version { $(fn $t_name ($($t_arg : $t_atype ),* ) -> $t_rtype ;)* })*);
 	};
@@ -1969,13 +1958,13 @@ macro_rules! api {
 		impl DynamicInstance<EGL1_0> {
 			#[inline(always)]
 			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
-			/// 
+			///
 			/// See [`Library::new`](libloading::Library::new)
 			/// for more details on how the `filename` argument is used.
-			/// 
+			///
 			/// On Linux plateforms, the library is loaded with the `RTLD_NODELETE` flag.
 			/// See [#14](https://github.com/timothee-haudebourg/khronos-egl/issues/14) for more details.
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
@@ -1992,9 +1981,9 @@ macro_rules! api {
 
 			#[inline(always)]
 			/// Create an EGL instance by finding and loading the `libEGL.so.1` library.
-			/// 
+			///
 			/// This is equivalent to `DynamicInstance::load_from_filename("libEGL.so.1")`.
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
 			pub unsafe fn load() -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
@@ -2017,7 +2006,7 @@ macro_rules! api {
 		#[cfg(feature="dynamic")]
 		#[cfg(feature=$version)]
 		/// EGL version type.
-		/// 
+		///
 		/// Used by [`Dynamic`] to statically know the EGL API version provided by the library.
 		pub struct $id;
 
@@ -2147,9 +2136,9 @@ macro_rules! api {
 		impl<L: std::borrow::Borrow<libloading::Library>> Dynamic<L, $id> {
 			#[inline]
 			/// Load the EGL API symbols from the given library.
-			/// 
+			///
 			/// The second `Dynamic` type parameter gives the EGL API version expected to be provided by the library.
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_required(lib: L) -> Result<Dynamic<L, $id>, LoadError<libloading::Error>> {
@@ -2175,7 +2164,7 @@ macro_rules! api {
 			#[inline(always)]
 			/// Create an EGL instance using the symbols provided by the given library.
 			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_required_from(lib: L) -> Result<Instance<Dynamic<L, $id>>, LoadError<libloading::Error>> {
@@ -2189,7 +2178,7 @@ macro_rules! api {
 			#[inline(always)]
 			/// Create an EGL instance by finding and loading a dynamic library with the given filename.
 			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
-			/// 
+			///
 			/// See [`Library::new`](libloading::Library::new)
 			/// for more details on how the `filename` argument is used.
 			/// 
@@ -2213,9 +2202,9 @@ macro_rules! api {
 			#[inline(always)]
 			/// Create an EGL instance by finding and loading the `libEGL.so.1` library.
 			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
-			/// 
+			///
 			/// This is equivalent to `DynamicInstance::load_required_from_filename("libEGL.so.1")`.
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
 			pub unsafe fn load_required() -> Result<DynamicInstance<$id>, LoadError<libloading::Error>> {
@@ -2306,7 +2295,7 @@ api! {
 		fn eglWaitGL() -> Boolean;
 		fn eglWaitNative(engine: Int) -> Boolean;
 	},
-	
+
 	EGL1_1 : "1_1" {
 		fn eglBindTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;
 		fn eglReleaseTexImage(display: EGLDisplay, surface: EGLSurface, buffer: Int) -> Boolean;

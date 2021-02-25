@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished]
+### Added
+- `no-pkg-config` feature.
+### Changed
+- Upgrade dependency `libloading`: ^0.6 -> ^0.7.
+### Removed
+- `nightly` feature hich is no longer needed since `const_fn` is stabilized.
+
+## [3.0.2]
 ### Changed
 - One Linux, use the `RTLD_NODELETE` when loading the EGL library in `load_required_from_filename` and `load_from_filename`.
 
