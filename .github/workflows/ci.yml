@@ -38,6 +38,6 @@ jobs:
           sudo apt-get update -y -qq
           sudo apt-get install -y -qq libegl1-mesa-dev libwayland-dev
       - name: Cargo build
-        run: cargo build --all-features --all-targets
+        run: cargo build --features "static dynamic" --all-targets
       - name: Run load-minimal
         run: cargo run --example load-minimal --features "dynamic 1_4"
