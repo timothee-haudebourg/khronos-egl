@@ -1973,14 +1973,14 @@ macro_rules! api {
 			}
 
 			#[inline(always)]
-			/// Create an EGL instance by finding and loading the `libEGL.so.1` library.
+			/// Create an EGL instance by finding and loading the `libEGL.so.1` or `libEGL.so` library.
 			///
 			/// This is equivalent to `DynamicInstance::load_from_filename("libEGL.so.1")`.
 			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
 			pub unsafe fn load() -> Result<DynamicInstance<EGL1_0>, libloading::Error> {
-				Self::load_from_filename("libEGL.so.1")
+				Self::load_from_filename("libEGL.so.1").or(Self::load_from_filename("libEGL.so"))
 			}
 		}
 	};
@@ -2174,10 +2174,10 @@ macro_rules! api {
 			///
 			/// See [`Library::new`](libloading::Library::new)
 			/// for more details on how the `filename` argument is used.
-			/// 
+			///
 			/// On Linux plateforms, the library is loaded with the `RTLD_NODELETE` flag.
 			/// See [#14](https://github.com/timothee-haudebourg/khronos-egl/issues/14) for more details.
-			/// 
+			///
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the input library complies to the EGL API.
 			pub unsafe fn load_required_from_filename<P: AsRef<std::ffi::OsStr>>(filename: P) -> Result<DynamicInstance<$id>, LoadError<libloading::Error>> {
@@ -2193,7 +2193,7 @@ macro_rules! api {
 			}
 
 			#[inline(always)]
-			/// Create an EGL instance by finding and loading the `libEGL.so.1` library.
+			/// Create an EGL instance by finding and loading the `libEGL.so.1` or `libEGL.so` library.
 			/// This function fails if the EGL library does not provide the minimum required version given by the type parameter.
 			///
 			/// This is equivalent to `DynamicInstance::load_required_from_filename("libEGL.so.1")`.
@@ -2201,7 +2201,7 @@ macro_rules! api {
 			/// ## Safety
 			/// This is fundamentally unsafe since there are no guaranties the found library complies to the EGL API.
 			pub unsafe fn load_required() -> Result<DynamicInstance<$id>, LoadError<libloading::Error>> {
-				Self::load_required_from_filename("libEGL.so.1")
+			    Self::load_required_from_filename("libEGL.so.1").or(Self::load_required_from_filename("libEGL.so"))
 			}
 		}
 	}
