@@ -24,7 +24,7 @@ dynamic = ["libloading"]
 
 [dependencies]
 libc = "^0.2"
-libloading = { version = "^0.7", optional = true }
+libloading = { version = "^0.8", optional = true }
 
 [build-dependencies]
 pkg-config = { version = "^0.3", optional = true }
