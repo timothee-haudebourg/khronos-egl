@@ -2299,7 +2299,10 @@ macro_rules! api {
 				$(
 					let name = stringify!($name).as_bytes();
 					let symbol = lib.get::<unsafe extern "system" fn($($atype ),*) -> $rtype>(name)?;
+					#[cfg(unix)]
 					let ptr = (&symbol.into_raw().into_raw()) as *const *mut _ as *const unsafe extern "system" fn($($atype ),*) -> $rtype;
+					#[cfg(windows)]
+					let ptr = (&symbol.into_raw().into_raw()) as *const _ as *const unsafe extern "system" fn($($atype ),*) -> $rtype;
 					assert!(!ptr.is_null());
 					raw.$name = std::mem::MaybeUninit::new(*ptr);
 				)*
