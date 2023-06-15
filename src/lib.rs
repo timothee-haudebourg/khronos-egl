@@ -912,7 +912,7 @@ mod egl1_0 {
 		}
 
 		/// Return a GL or an EGL extension function.
-		pub fn get_proc_address(&self, procname: &str) -> Option<extern "C" fn()> {
+		pub fn get_proc_address(&self, procname: &str) -> Option<extern "system" fn()> {
 			unsafe {
 				let string = CString::new(procname).unwrap();
 
@@ -1628,7 +1628,7 @@ macro_rules! api {
 			};
 
 			$(
-				extern "C" {
+				extern "system" {
 					$(
 						#[cfg(feature=$version)]
 						pub fn $name ($($arg : $atype ),* ) -> $rtype ;
@@ -1703,7 +1703,7 @@ macro_rules! api {
 			$(
 				$(
 					#[cfg(feature=$version)]
-					$name : std::mem::MaybeUninit<unsafe extern "C" fn($($atype ),*) -> $rtype>,
+					$name : std::mem::MaybeUninit<unsafe extern "system" fn($($atype ),*) -> $rtype>,
 				)*
 			)*
 		}
@@ -2012,8 +2012,8 @@ macro_rules! api {
 
 				$(
 					let name = stringify!($name).as_bytes();
-					let symbol = lib.get::<unsafe extern "C" fn($($atype ),*) -> $rtype>(name)?;
-					let ptr = (&symbol.into_raw().into_raw()) as *const *mut _ as *const unsafe extern "C" fn($($atype ),*) -> $rtype;
+					let symbol = lib.get::<unsafe extern "system" fn($($atype ),*) -> $rtype>(name)?;
+					let ptr = (&symbol.into_raw().into_raw()) as *const *mut _ as *const unsafe extern "system" fn($($atype ),*) -> $rtype;
 					assert!(!ptr.is_null());
 					raw.$name = std::mem::MaybeUninit::new(*ptr);
 				)*
@@ -2262,7 +2262,7 @@ api! {
 		fn eglGetCurrentSurface(readdraw: Int) -> EGLSurface;
 		fn eglGetDisplay(display_id: NativeDisplayType) -> EGLDisplay;
 		fn eglGetError() -> Int;
-		fn eglGetProcAddress(procname: *const c_char) -> extern "C" fn();
+		fn eglGetProcAddress(procname: *const c_char) -> extern "system" fn();
 		fn eglInitialize(display: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
 		fn eglMakeCurrent(
 			display: EGLDisplay,
