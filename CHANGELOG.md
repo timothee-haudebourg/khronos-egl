@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unpublished]
+### Changed
+- `copy_buffers` is now unsafe.
+- `get_display` is now unsafe.
+- `get_platform_display` is now unsafe.
+- `create_platform_window_surface` is now unsafe.
+- `create_platform_pixmap_surface` is now unsafe.
+### Fixed
+- Fix `choose_config` & `get_config` undefined behavior when the input `configs`
+  vector is empty. (Fixes [#21](https://github.com/timothee-haudebourg/khronos-egl/issues/21))
 
 ## [5.0.0]
 ### Changed
