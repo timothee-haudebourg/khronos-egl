@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `create_platform_pixmap_surface` is now unsafe.
 ### Fixed
 - Fix `choose_config` & `get_config` undefined behavior when the input `configs`
-  vector is empty. (Fixes [#21](https://github.com/timothee-haudebourg/khronos-egl/issues/21))
+  vector is empty. (Fixes [#21](https://github.com/timothee-haudebourg/khronos-egl/issues/21)).
+- Fix Windows build (Fixes [#23](https://github.com/timothee-haudebourg/khronos-egl/pull/23)).
 
 ## [5.0.0]
 ### Changed

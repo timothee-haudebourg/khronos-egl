@@ -1,7 +1,4 @@
-extern crate gl;
 extern crate khronos_egl as egl;
-extern crate libloading;
-
 use egl::{EGL1_2, EGL1_4};
 use std::sync::Arc;
 

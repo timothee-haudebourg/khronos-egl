@@ -28,7 +28,7 @@
 //!   let egl = egl::Instance::new(egl::Static);
 //!
 //!   let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-//!   let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+//!   let display = unsafe { egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void) }.unwrap();
 //!   egl.initialize(display)?;
 //!
 //!   let attributes = [
@@ -87,8 +87,8 @@
 //!
 //! ```
 //! # extern crate khronos_egl as egl;
-//! let lib = libloading::Library::new("libEGL.so.1").expect("unable to find libEGL.so.1");
-//! let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so.1") };
+//! let lib = unsafe { libloading::Library::new("libEGL.so.1") }.expect("unable to find libEGL.so.1");
+//! let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib) }.expect("unable to load libEGL.so.1");
 //! ```
 //!
 //! Here, `egl::EGL1_4` is used to specify what is the minimum required version of EGL that must be provided by `libEGL.so.1`.
@@ -96,8 +96,8 @@
 //! you can still upcast ths instance to provide version specific features:
 //! ```
 //! # extern crate khronos_egl as egl;
-//! # let lib = libloading::Library::new("libEGL.so.1").expect("unable to find libEGL.so.1");
-//! # let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib).expect("unable to load libEGL.so.1") };
+//! # let lib = unsafe { libloading::Library::new("libEGL.so.1") }.expect("unable to find libEGL.so.1");
+//! # let egl = unsafe { egl::DynamicInstance::<egl::EGL1_4>::load_required_from(lib) }.expect("unable to load libEGL.so.1");
 //! match egl.upcast::<egl::EGL1_5>() {
 //!   Some(egl1_5) => {
 //!     // do something with EGL 1.5
@@ -599,7 +599,7 @@ mod egl1_0 {
 		/// # fn main() -> Result<(), egl::Error> {
 		/// # let egl = egl::Instance::new(egl::Static);
 		/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-		/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+		/// # let display = unsafe { egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void) }.unwrap();
 		/// # egl.initialize(display)?;
 		/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
 		/// // Get the number of matching configurations.
@@ -660,7 +660,7 @@ mod egl1_0 {
 		/// # fn main() -> Result<(), egl::Error> {
 		/// # let egl = egl::Instance::new(egl::Static);
 		/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-		/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+		/// # let display = unsafe { egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void) }.unwrap();
 		/// # egl.initialize(display)?;
 		/// # let attrib_list = [egl::RED_SIZE, 8, egl::GREEN_SIZE, 8, egl::BLUE_SIZE, 8, egl::NONE];
 		/// let mut configs = Vec::with_capacity(1);
@@ -892,7 +892,7 @@ mod egl1_0 {
 		/// # fn main() -> Result<(), egl::Error> {
 		/// # let egl = egl::Instance::new(egl::Static);
 		/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-		/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+		/// # let display = unsafe { egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void) }.unwrap();
 		/// # egl.initialize(display)?;
 		/// let mut configs = Vec::with_capacity(egl.get_config_count(display)?);
 		/// egl.get_configs(display, &mut configs);
@@ -929,7 +929,7 @@ mod egl1_0 {
 		/// # fn main() -> Result<(), egl::Error> {
 		/// # let egl = egl::Instance::new(egl::Static);
 		/// # let wayland_display = wayland_client::Display::connect_to_env().expect("unable to connect to the wayland server");
-		/// # let display = egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void).unwrap();
+		/// # let display = unsafe { egl.get_display(wayland_display.get_display_ptr() as *mut std::ffi::c_void) }.unwrap();
 		/// # egl.initialize(display)?;
 		/// let mut configs = Vec::with_capacity(egl.get_config_count(display)?);
 		/// egl.get_configs(display, &mut configs);

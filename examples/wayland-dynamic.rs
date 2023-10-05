@@ -1,10 +1,4 @@
-extern crate gl;
 extern crate khronos_egl as egl;
-extern crate libloading;
-extern crate wayland_client;
-extern crate wayland_egl;
-extern crate wayland_protocols;
-
 use gl::types::{GLboolean, GLchar, GLenum, GLint, GLuint, GLvoid};
 use std::ffi::CStr;
 use std::ptr;
@@ -66,11 +60,12 @@ fn setup_wayland() -> DisplayConnection {
 }
 
 fn setup_egl(egl: &egl::DynamicInstance, display: &Display) -> egl::Display {
-	let egl_display = egl
-		.get_display(display.get_display_ptr() as *mut std::ffi::c_void)
-		.unwrap();
-	egl.initialize(egl_display).unwrap();
+	let egl_display = unsafe {
+		egl.get_display(display.get_display_ptr() as *mut std::ffi::c_void)
+			.unwrap()
+	};
 
+	egl.initialize(egl_display).unwrap();
 	egl_display
 }
 

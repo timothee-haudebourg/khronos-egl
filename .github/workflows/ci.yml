@@ -10,7 +10,6 @@ jobs:
         channel: [ stable, nightly ]
     steps:
       - uses: actions/checkout@v1
-      - uses: actions-rs/cargo@v1
       - name: Select Rust channel
         uses: actions-rs/toolchain@v1
         with:

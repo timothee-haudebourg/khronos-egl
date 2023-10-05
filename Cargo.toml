@@ -9,6 +9,7 @@ documentation = "https://docs.rs/khronos-egl"
 readme        = "README.md"
 keywords      = ["egl", "gl", "khronos", "opengl"]
 build         = "build.rs"
+edition       = "2021"
 
 [features]
 default = ["1_5"]
