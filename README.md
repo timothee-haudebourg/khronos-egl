@@ -62,7 +62,7 @@ fn main() -> Result<(), egl::Error> {
 		egl::NONE
 	];
 
-	egl.bind_api(egl::OPENGL_API).unwrap();
+	egl.bind_api(egl::OPENGL_API)?;
 	egl.create_context(display, config, None, &context_attributes);
 
 	Ok(())
