@@ -255,6 +255,9 @@ mod egl1_0 {
 		}
 	}
 
+	unsafe impl std::marker::Send for Display {}
+	unsafe impl std::marker::Sync for Display {}
+
 	#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 	pub struct Config(pub(crate) EGLConfig);
 
@@ -274,6 +277,9 @@ mod egl1_0 {
 			self.0
 		}
 	}
+
+	unsafe impl std::marker::Send for Config {}
+	unsafe impl std::marker::Sync for Config {}
 
 	#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 	pub struct Context(pub(crate) EGLContext);
@@ -295,6 +301,9 @@ mod egl1_0 {
 		}
 	}
 
+	unsafe impl std::marker::Send for Context {}
+	unsafe impl std::marker::Sync for Context {}
+
 	#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 	pub struct Surface(EGLSurface);
 
@@ -314,6 +323,9 @@ mod egl1_0 {
 			self.0
 		}
 	}
+
+	unsafe impl std::marker::Send for Surface {}
+	unsafe impl std::marker::Sync for Surface {}
 
 	#[cfg(not(android))]
 	pub type NativePixmapType = *mut c_void;
@@ -1346,6 +1358,9 @@ mod egl1_2 {
 		}
 	}
 
+	unsafe impl std::marker::Send for ClientBuffer {}
+	unsafe impl std::marker::Sync for ClientBuffer {}
+
 	pub const ALPHA_FORMAT: Int = 0x3088;
 	pub const ALPHA_FORMAT_NONPRE: Int = 0x308B;
 	pub const ALPHA_FORMAT_PRE: Int = 0x308C;
@@ -1543,6 +1558,9 @@ mod egl1_5 {
 		}
 	}
 
+	unsafe impl std::marker::Send for Sync {}
+	unsafe impl std::marker::Sync for Sync {}
+
 	#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 	pub struct Image(EGLImage);
 
@@ -1562,6 +1580,9 @@ mod egl1_5 {
 			self.0
 		}
 	}
+
+	unsafe impl std::marker::Send for Image {}
+	unsafe impl std::marker::Sync for Image {}
 
 	pub const CONTEXT_MAJOR_VERSION: Int = 0x3098;
 	pub const CONTEXT_MINOR_VERSION: Int = 0x30FB;
