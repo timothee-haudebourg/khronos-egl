@@ -1041,8 +1041,8 @@ mod egl1_0 {
 				let string = CString::new(procname).unwrap();
 
 				let addr = self.api.eglGetProcAddress(string.as_ptr());
-				if !(addr as *const ()).is_null() {
-					Some(addr)
+				if addr != 0 {
+					Some(std::mem::transmute(addr as *const ()))
 				} else {
 					None
 				}
@@ -2551,7 +2551,7 @@ api! {
 		fn eglGetCurrentSurface(readdraw: Int) -> EGLSurface;
 		fn eglGetDisplay(display_id: NativeDisplayType) -> EGLDisplay;
 		fn eglGetError() -> Int;
-		fn eglGetProcAddress(procname: *const c_char) -> extern "system" fn();
+		fn eglGetProcAddress(procname: *const c_char) -> usize;
 		fn eglInitialize(display: EGLDisplay, major: *mut Int, minor: *mut Int) -> Boolean;
 		fn eglMakeCurrent(
 			display: EGLDisplay,
