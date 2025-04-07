@@ -2,9 +2,8 @@
 
 pkgs.mkShell {
 	buildInputs = [
-		pkgs.gcc
 		pkgs.libGL
 		pkgs.pkg-config
 	];
-	LD_LIBRARY_PATH="${pkgs.libGL}/lib";
+	LD_LIBRARY_PATH = lib.makeLibraryPath [ pkgs.libGL ];
 }
