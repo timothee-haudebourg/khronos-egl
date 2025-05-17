@@ -32,9 +32,9 @@ pkg-config = { version = "^0.3", optional = true }
 
 [dev-dependencies]
 gl = "^0.14"
-wayland-client = { version = "^0.28" }
-wayland-protocols = { version = "^0.28", features = [ "client" ] }
-wayland-egl = { version = "^0.28" }
+wayland-client = { version = "^0.32" }
+wayland-protocols = { version = "^0.32", features = [ "client" ] }
+wayland-egl = { version = "^0.32" }
 
 [[example]]
 name = "wayland-static"
