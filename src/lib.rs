@@ -60,17 +60,12 @@
 //!
 //! #### Static API Instance
 //!
-//! It may be bothering in some applications to pass the `Instance` to every fonction that needs to call the EGL API.
-//! One workaround would be to define a static `Instance`,
-//! which should be possible to define at compile time using static linking.
-//! However this is not yet supported by the stable `rustc` compiler.
-//! With the nightly compiler,
-//! you can combine the `nightly` and `static` features so that this crate
-//! can provide a static `Instance`, called `API` that can then be accessed everywhere.
+//! It may be bothersome in some applications to pass the `Instance` to every function that needs to call the EGL API.
+//! One workaround is to define a static `Instance`:
 //!
-//! ```
+//! ```ignore
 //! # extern crate khronos_egl as egl;
-//! use egl::API as egl;
+//! static EGL: egl::Instance<egl::Static> = egl::Instance::new(egl::Static);
 //! ```
 //!
 //! ### Dynamic Linking
