@@ -1776,7 +1776,10 @@ mod egl1_5 {
 			if display != NO_DISPLAY {
 				Ok(Display::from_ptr(display))
 			} else {
-				Err(self.get_error().unwrap())
+				// NOTE: The spec says that "If platform is valid but no display matching
+				// `native_display` is available, then `EGL_NO_DISPLAY` is returned;
+				// no error condition is raised in this case.". So we "emulate" the error.
+				Err(self.get_error().unwrap_or(Error::BadDisplay))
 			}
 		}
 
