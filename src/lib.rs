@@ -448,6 +448,12 @@ mod egl1_0 {
 		/// contexts and reinitialise OpenGL ES state and objects to continue
 		/// rendering.
 		ContextLost,
+
+		/// An EGL call failed, but `eglGetError` returned `EGL_SUCCESS`.
+		///
+		/// This is not a native EGL error; [`Error::native`] returns the observed
+		/// `SUCCESS` code.
+		Unreported,
 	}
 
 	impl std::error::Error for Error {
@@ -474,6 +480,7 @@ mod egl1_0 {
 				BadNativePixmap => BAD_NATIVE_PIXMAP,
 				BadNativeWindow => BAD_NATIVE_WINDOW,
 				ContextLost => CONTEXT_LOST,
+				Unreported => SUCCESS,
 			}
 		}
 
@@ -493,7 +500,8 @@ mod egl1_0 {
 				BadParameter => "One or more argument values are invalid.",
 				BadNativePixmap => "A NativePixmapType argument does not refer to a valid native pixmap.",
 				BadNativeWindow => "A NativeWindowType argument does not refer to a valid native window.",
-				ContextLost => "A power management event has occurred. The application must destroy all contexts and reinitialise OpenGL ES state and objects to continue rendering."
+				ContextLost => "A power management event has occurred. The application must destroy all contexts and reinitialise OpenGL ES state and objects to continue rendering.",
+				Unreported => "An EGL call failed, but eglGetError returned EGL_SUCCESS."
 			}
 		}
 	}
@@ -579,7 +587,7 @@ mod egl1_0 {
 				{
 					Ok(count as usize)
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -643,7 +651,7 @@ mod egl1_0 {
 						configs.set_len(count as usize);
 						Ok(())
 					} else {
-						Err(self.get_error().unwrap())
+						Err(self.get_call_error())
 					}
 				}
 			}
@@ -699,7 +707,7 @@ mod egl1_0 {
 				{
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -732,7 +740,7 @@ mod egl1_0 {
 				if context != NO_CONTEXT {
 					Ok(Context(context))
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -758,7 +766,7 @@ mod egl1_0 {
 				if surface != NO_SURFACE {
 					Ok(Surface(surface))
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -790,7 +798,7 @@ mod egl1_0 {
 			if surface != NO_SURFACE {
 				Ok(Surface(surface))
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -828,7 +836,7 @@ mod egl1_0 {
 			if surface != NO_SURFACE {
 				Ok(Surface(surface))
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -838,7 +846,7 @@ mod egl1_0 {
 				if self.api.eglDestroyContext(display.as_ptr(), ctx.as_ptr()) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -853,7 +861,7 @@ mod egl1_0 {
 				{
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -876,7 +884,7 @@ mod egl1_0 {
 				{
 					Ok(value)
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -911,7 +919,7 @@ mod egl1_0 {
 				{
 					Ok(count as usize)
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -961,7 +969,7 @@ mod egl1_0 {
 						configs.set_len(count as usize);
 						Ok(())
 					} else {
-						Err(self.get_error().unwrap())
+						Err(self.get_call_error())
 					}
 				}
 			}
@@ -1035,6 +1043,11 @@ mod egl1_0 {
 			}
 		}
 
+		pub(super) fn get_call_error(&self) -> Error {
+			// Some EGL implementations fail without setting the thread's error code.
+			self.get_error().unwrap_or(Error::Unreported)
+		}
+
 		/// Return a GL or an EGL extension function.
 		pub fn get_proc_address(&self, procname: &str) -> Option<extern "system" fn()> {
 			unsafe {
@@ -1062,7 +1075,7 @@ mod egl1_0 {
 				{
 					Ok((major, minor))
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1092,7 +1105,7 @@ mod egl1_0 {
 				if self.api.eglMakeCurrent(display.as_ptr(), draw, read, ctx) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1113,7 +1126,7 @@ mod egl1_0 {
 				{
 					Ok(value)
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1136,7 +1149,7 @@ mod egl1_0 {
 				if !c_str.is_null() {
 					Ok(CStr::from_ptr(c_str))
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1159,7 +1172,7 @@ mod egl1_0 {
 				{
 					Ok(value)
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1170,7 +1183,7 @@ mod egl1_0 {
 				if self.api.eglSwapBuffers(display.as_ptr(), surface.as_ptr()) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1181,7 +1194,7 @@ mod egl1_0 {
 				if self.api.eglTerminate(display.as_ptr()) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1192,7 +1205,7 @@ mod egl1_0 {
 				if self.api.eglWaitGL() == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1203,7 +1216,7 @@ mod egl1_0 {
 				if self.api.eglWaitNative(engine) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1252,7 +1265,7 @@ mod egl1_1 {
 				{
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1272,7 +1285,7 @@ mod egl1_1 {
 				{
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1293,7 +1306,7 @@ mod egl1_1 {
 				{
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1305,7 +1318,7 @@ mod egl1_1 {
 				if self.api.eglSwapInterval(display.as_ptr(), interval) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1383,7 +1396,7 @@ mod egl1_2 {
 				if self.api.eglBindAPI(api) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1418,7 +1431,7 @@ mod egl1_2 {
 				if surface != NO_SURFACE {
 					Ok(Surface::from_ptr(surface))
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1429,7 +1442,7 @@ mod egl1_2 {
 				if self.api.eglReleaseThread() == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1440,7 +1453,7 @@ mod egl1_2 {
 				if self.api.eglWaitClient() == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1634,7 +1647,7 @@ mod egl1_5 {
 			if sync != NO_SYNC {
 				Ok(Sync(sync))
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -1648,7 +1661,7 @@ mod egl1_5 {
 			if self.api.eglDestroySync(display.as_ptr(), sync.as_ptr()) == TRUE {
 				Ok(())
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -1671,7 +1684,7 @@ mod egl1_5 {
 			if status != FALSE as Int {
 				Ok(status)
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -1697,7 +1710,7 @@ mod egl1_5 {
 			{
 				Ok(value)
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -1728,7 +1741,7 @@ mod egl1_5 {
 				if image != NO_IMAGE {
 					Ok(Image(image))
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1739,7 +1752,7 @@ mod egl1_5 {
 				if self.api.eglDestroyImage(display.as_ptr(), image.as_ptr()) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1776,7 +1789,7 @@ mod egl1_5 {
 			if display != NO_DISPLAY {
 				Ok(Display::from_ptr(display))
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -1813,7 +1826,7 @@ mod egl1_5 {
 			if surface != NO_SURFACE {
 				Ok(Surface::from_ptr(surface))
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -1850,7 +1863,7 @@ mod egl1_5 {
 			if surface != NO_SURFACE {
 				Ok(Surface::from_ptr(surface))
 			} else {
-				Err(self.get_error().unwrap())
+				Err(self.get_call_error())
 			}
 		}
 
@@ -1863,7 +1876,7 @@ mod egl1_5 {
 				if self.api.eglWaitSync(display.as_ptr(), sync.as_ptr(), flags) == TRUE {
 					Ok(())
 				} else {
-					Err(self.get_error().unwrap())
+					Err(self.get_call_error())
 				}
 			}
 		}
@@ -1876,6 +1889,25 @@ pub use egl1_5::*;
 // -------------------------------------------------------------------------------------------------
 // FFI
 // -------------------------------------------------------------------------------------------------
+
+#[cfg(test)]
+macro_rules! mock_egl_call {
+	($provider:ident, eglGetError) => {
+		$provider.take_error()
+	};
+	($provider:ident, eglCreateWindowSurface) => {
+		$provider.surface
+	};
+	($provider:ident, eglCreatePlatformWindowSurface) => {
+		$provider.surface
+	};
+	($provider:ident, eglWaitGL) => {
+		FALSE
+	};
+	($provider:ident, $name:ident) => {
+		panic!("unexpected EGL call: {}", stringify!($name))
+	};
+}
 
 macro_rules! api {
 	($($id:ident : $version:literal { $(fn $name:ident ($($arg:ident : $atype:ty ),* ) -> $rtype:ty ;)* }),*) => {
@@ -2185,6 +2217,16 @@ macro_rules! api {
 		pub unsafe trait $id $($deps)* {
 			$(
 				unsafe fn $name (&self, $($arg : $atype ),* ) -> $rtype ;
+			)*
+		}
+
+		#[cfg(all(test, feature=$version))]
+		unsafe impl $id for crate::tests::MockEgl {
+			$(
+				unsafe fn $name (&self, $($arg : $atype ),* ) -> $rtype {
+					let _ = ($($arg),*);
+					mock_egl_call!(self, $name)
+				}
 			)*
 		}
 	};
@@ -2648,5 +2690,160 @@ api! {
 			attrib_list: *const Attrib
 		) -> EGLSurface;
 		fn eglWaitSync(display: EGLDisplay, sync: EGLSync, flags: Int) -> Boolean;
+	}
+}
+
+#[cfg(all(test, feature = "1_0"))]
+mod tests {
+	use super::*;
+	use std::cell::Cell;
+
+	pub(crate) struct MockEgl {
+		pub(crate) surface: EGLSurface,
+		error: Cell<Int>,
+		error_reads: Cell<usize>,
+	}
+
+	impl MockEgl {
+		pub(crate) fn take_error(&self) -> Int {
+			self.error_reads.set(self.error_reads.get() + 1);
+			self.error.replace(SUCCESS)
+		}
+	}
+
+	fn with_instance(
+		surface: EGLSurface,
+		error: Int,
+		run: impl FnOnce(&Instance<MockEgl>, Display, Config, *mut c_void),
+	) {
+		let instance = Instance::new(MockEgl {
+			surface,
+			error: Cell::new(error),
+			error_reads: Cell::new(0),
+		});
+		let mut display_handle = 0u8;
+		let mut config_handle = 0u8;
+		let mut window_handle = 0u8;
+		// These handles belong to the mock provider and are never forwarded to native EGL.
+		let display = unsafe { Display::from_ptr((&mut display_handle as *mut u8).cast()) };
+		let config = unsafe { Config::from_ptr((&mut config_handle as *mut u8).cast()) };
+		run(
+			&instance,
+			display,
+			config,
+			(&mut window_handle as *mut u8).cast(),
+		);
+	}
+
+	type CreateSurface =
+		fn(&Instance<MockEgl>, Display, Config, *mut c_void) -> Result<Surface, Error>;
+
+	fn create_window_surface(
+		instance: &Instance<MockEgl>,
+		display: Display,
+		config: Config,
+		window: *mut c_void,
+	) -> Result<Surface, Error> {
+		unsafe { instance.create_window_surface(display, config, window.cast(), Some(&[NONE])) }
+	}
+
+	#[cfg(feature = "1_5")]
+	fn create_platform_window_surface(
+		instance: &Instance<MockEgl>,
+		display: Display,
+		config: Config,
+		window: *mut c_void,
+	) -> Result<Surface, Error> {
+		unsafe { instance.create_platform_window_surface(display, config, window, &[ATTRIB_NONE]) }
+	}
+
+	fn check_unreported_error(create: CreateSurface) {
+		with_instance(NO_SURFACE, SUCCESS, |instance, display, config, window| {
+			assert_eq!(
+				create(instance, display, config, window),
+				Err(Error::Unreported)
+			);
+			assert_eq!(instance.api.error_reads.get(), 1);
+			assert_eq!(instance.get_error(), None);
+		});
+	}
+
+	fn check_reported_errors(create: CreateSurface) {
+		for error in [Error::BadNativeWindow, Error::BadMatch] {
+			with_instance(
+				NO_SURFACE,
+				error.native(),
+				|instance, display, config, window| {
+					assert_eq!(create(instance, display, config, window), Err(error));
+					assert_eq!(instance.api.error_reads.get(), 1);
+					assert_eq!(instance.get_error(), None);
+				},
+			);
+		}
+	}
+
+	fn check_success(create: CreateSurface) {
+		let mut surface_handle = 0u8;
+		let surface = (&mut surface_handle as *mut u8).cast();
+		with_instance(surface, BAD_MATCH, |instance, display, config, window| {
+			assert_eq!(
+				create(instance, display, config, window).map(|surface| surface.as_ptr()),
+				Ok(surface)
+			);
+			assert_eq!(instance.api.error_reads.get(), 0);
+			assert_eq!(instance.get_error(), Some(Error::BadMatch));
+		});
+	}
+
+	#[test]
+	fn window_surface_handles_unreported_error() {
+		check_unreported_error(create_window_surface);
+	}
+
+	#[test]
+	fn window_surface_preserves_reported_errors() {
+		check_reported_errors(create_window_surface);
+	}
+
+	#[test]
+	fn window_surface_success_does_not_query_error() {
+		check_success(create_window_surface);
+	}
+
+	#[cfg(feature = "1_5")]
+	#[test]
+	fn platform_window_surface_handles_unreported_error() {
+		check_unreported_error(create_platform_window_surface);
+	}
+
+	#[cfg(feature = "1_5")]
+	#[test]
+	fn platform_window_surface_preserves_reported_errors() {
+		check_reported_errors(create_platform_window_surface);
+	}
+
+	#[cfg(feature = "1_5")]
+	#[test]
+	fn platform_window_surface_success_does_not_query_error() {
+		check_success(create_platform_window_surface);
+	}
+
+	#[test]
+	fn failed_boolean_call_handles_unreported_error() {
+		with_instance(NO_SURFACE, SUCCESS, |instance, _, _, _| {
+			assert_eq!(instance.wait_gl(), Err(Error::Unreported));
+			assert_eq!(instance.api.error_reads.get(), 1);
+		});
+	}
+
+	#[test]
+	fn unreported_error_preserves_native_success_semantics() {
+		assert_eq!(Error::Unreported.native(), SUCCESS);
+		assert_eq!(Int::from(Error::Unreported), SUCCESS);
+		assert_eq!(Error::try_from(SUCCESS), Err(SUCCESS));
+		assert_eq!(
+			Error::Unreported.to_string(),
+			"An EGL call failed, but eglGetError returned EGL_SUCCESS."
+		);
 	}
 }
